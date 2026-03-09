@@ -87,11 +87,6 @@ public class Card {
     @JsonManagedReference("card-cardContents")
     private List<CardContent> cardContents;
 
-    // Relationship: Card 1-N OrderItem
-    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference("card-orderItems")
-    private List<OrderItem> orderItems;
-
     // Relationship: Card 1-N CollectionItem
     @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference("card-collectionItems")
