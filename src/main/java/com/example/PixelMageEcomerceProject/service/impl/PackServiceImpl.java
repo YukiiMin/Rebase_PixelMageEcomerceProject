@@ -1,10 +1,8 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.PixelMageEcomerceProject.dto.request.PackRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Card;
-import com.example.PixelMageEcomerceProject.entity.CardTemplate;
 import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.entity.PackDetail;
 import com.example.PixelMageEcomerceProject.entity.Product;
@@ -60,39 +57,40 @@ public class PackServiceImpl implements PackService {
         pack.setCreatedBy(createdBy);
         pack = packRepository.save(pack);
 
-        // 2. Perform RNG to select Templates
-        List<CardTemplate> allTemplates = cardTemplateRepository.findAll();
-        if (allTemplates.isEmpty()) {
-            throw new RuntimeException("No CardTemplates available to generate a pack");
+        // 2. Perform RNG to select physical cards (Must be READY)
+        List<Card> readyCards = cardRepository.findByStatus(CardProductStatus.READY.name());
+        if (readyCards.size() < CARDS_PER_PACK) {
+            throw new RuntimeException(
+                    "Not enough physical cards in READY status to form a pack. Found: " + readyCards.size());
         }
 
-        Random random = new Random();
+        // Shuffle existing cards and pick CARDS_PER_PACK
+        java.util.Collections.shuffle(readyCards);
+        List<Card> selectedCards = readyCards.subList(0, CARDS_PER_PACK);
+
         List<PackDetail> packDetails = new ArrayList<>();
 
         for (int i = 0; i < CARDS_PER_PACK; i++) {
-            // RNG logic: pick a random template
-            CardTemplate selectedTemplate = allTemplates.get(random.nextInt(allTemplates.size()));
+            Card card = selectedCards.get(i);
 
-            // 3. Create physical Card instance (PENDING_BIND state)
-            Card newCard = new Card();
-            newCard.setCardTemplate(selectedTemplate);
-            newCard.setProduct(product);
-            newCard.setStatus(CardProductStatus.PENDING_BIND.name());
-            newCard.setCardCondition("NEW");
-            String batchStr = "BATCH-" + LocalDateTime.now().getYear() + "-" + LocalDateTime.now().getMonthValue();
-            newCard.setProductionBatch(batchStr);
-            cardRepository.save(newCard);
+            // Update card status -> SOLD (reserved for pack)
+            card.setStatus(CardProductStatus.SOLD.name());
+            cardRepository.save(card);
 
-            // 4. Create Pack Detail linking Pack -> Card
+            // 3. Create Pack Detail linking Pack -> Card
             PackDetail detail = new PackDetail();
             detail.setPack(pack);
-            detail.setCard(newCard);
+            detail.setCard(card);
             detail.setPositionIndex(i + 1);
             packDetails.add(detail);
         }
 
         packDetailRepository.saveAll(packDetails);
         pack.setPackDetails(packDetails);
+
+        // 4. Update Pack status -> STOCKED
+        pack.setStatus("STOCKED");
+        pack = packRepository.save(pack);
 
         return pack;
     }

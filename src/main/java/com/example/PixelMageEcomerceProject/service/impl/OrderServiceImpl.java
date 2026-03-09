@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,11 +9,16 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.PixelMageEcomerceProject.dto.request.OrderItemRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.OrderRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Order;
+import com.example.PixelMageEcomerceProject.entity.OrderItem;
+import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
+import com.example.PixelMageEcomerceProject.repository.OrderItemRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
+import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.OrderService;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
 import com.stripe.model.PaymentIntent;
@@ -27,6 +33,8 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
     private final PaymentService paymentService;
+    private final PackRepository packRepository;
+    private final OrderItemRepository orderItemRepository;
 
     @Override
     public Order createOrder(OrderRequestDTO orderRequestDTO) {
@@ -44,7 +52,36 @@ public class OrderServiceImpl implements OrderService {
         order.setPaymentStatus(orderRequestDTO.getPaymentStatus());
         order.setNotes(orderRequestDTO.getNotes());
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        if (orderRequestDTO.getOrderItems() != null) {
+            List<OrderItem> items = new ArrayList<>();
+            for (OrderItemRequestDTO itemDto : orderRequestDTO.getOrderItems()) {
+                OrderItem item = new OrderItem();
+                item.setOrder(savedOrder);
+                item.setQuantity(itemDto.getQuantity());
+                item.setUnitPrice(itemDto.getUnitPrice());
+                item.setSubtotal(itemDto.getSubtotal());
+                item.setCustomText(itemDto.getCustomText());
+
+                if (itemDto.getPackId() != null) {
+                    Pack pack = packRepository.findById(itemDto.getPackId())
+                            .orElseThrow(() -> new RuntimeException("Pack not found: " + itemDto.getPackId()));
+                    if (!"STOCKED".equals(pack.getStatus())) {
+                        throw new RuntimeException("Pack is not STOCKED anymore");
+                    }
+                    pack.setStatus("RESERVED");
+                    packRepository.save(pack);
+                    item.setPack(pack);
+                }
+
+                items.add(item);
+                orderItemRepository.save(item);
+            }
+            savedOrder.setOrderItems(items);
+        }
+
+        return savedOrder;
     }
 
     @Override
@@ -88,6 +125,17 @@ public class OrderServiceImpl implements OrderService {
             updatedOrder.setShippingAddress(orderRequestDTO.getShippingAddress());
             updatedOrder.setPaymentMethod(orderRequestDTO.getPaymentMethod());
             updatedOrder.setPaymentStatus(orderRequestDTO.getPaymentStatus());
+
+            if ("PAID".equals(orderRequestDTO.getPaymentStatus()) && updatedOrder.getOrderItems() != null) {
+                for (OrderItem item : updatedOrder.getOrderItems()) {
+                    if (item.getPack() != null && "RESERVED".equals(item.getPack().getStatus())) {
+                        Pack pack = item.getPack();
+                        pack.setStatus("SOLD");
+                        packRepository.save(pack);
+                    }
+                }
+            }
+
             updatedOrder.setNotes(orderRequestDTO.getNotes());
             return orderRepository.save(updatedOrder);
         }
