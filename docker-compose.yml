@@ -1,57 +1,120 @@
-version: '3.8'
-
 services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: pixelmage-mssql
-    ports:
-      - '1434:1433' # Map port 1434 of host to 1433 of container
+  postgres:
+    image: postgres:15-alpine
+    container_name: pixelmage-postgres
     environment:
-      ACCEPT_EULA: Y
-      MSSQL_SA_PASSWORD: 'PixelMage@2026' # Must match DB_PASSWORD in .env
+      POSTGRES_DB: ExeProject
+      POSTGRES_USER: sa
+      POSTGRES_PASSWORD: PixelMage@2026
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - '5432:5432'
     volumes:
-      - mssql-data:/var/opt/mssql
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - pixelmage-net
     restart: unless-stopped
 
-  sqlserver-init:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: pixelmage-mssql-init
-    depends_on:
-      - sqlserver
-    command: >
-      /bin/bash -c "
-        echo 'Waiting for SQL Server to warm up...';
-        sleep 15;
-        /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P 'PixelMage@2026' -No -Q \"IF NOT EXISTS(SELECT * FROM sys.databases WHERE name = 'ExeProject') CREATE DATABASE ExeProject;\"
-        echo 'Database initialization script completed.';
-      "
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sa -d ExeProject || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+          cpus: '0.5'
+
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  redis:
+    image: redis:7-alpine
+    container_name: pixelmage-redis
+
+    command:
+      - redis-server
+      - --save
+      - ''
+      - --appendonly
+      - 'no'
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+
+    ports:
+      - '6379:6379'
+
+    volumes:
+      - redis-data:/data
+
+    networks:
+      - pixelmage-net
+
+    restart: unless-stopped
+
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+          cpus: '0.25'
+
+    logging:
+      driver: json-file
+      options:
+        max-size: '5m'
+        max-file: '2'
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
     container_name: pixelmage-n8n
+
     ports:
       - '5678:5678'
+
     environment:
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - NODE_ENV=production
-      - WEBHOOK_URL=http://localhost:5678/
-      - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      NODE_ENV: production
+      WEBHOOK_URL: http://localhost:5678/
+      GENERIC_TIMEZONE: Asia/Ho_Chi_Minh
+
+      EXECUTIONS_PROCESS: main
+      N8N_METRICS: 'false'
+
     volumes:
       - n8n-data:/home/node/.n8n
+
+    networks:
+      - pixelmage-net
+
     restart: unless-stopped
 
-  redis:
-    image: redis:alpine
-    container_name: pixelmage-redis
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+          cpus: '0.35'
+
+    logging:
+      driver: json-file
+      options:
+        max-size: '5m'
+        max-file: '2'
+
+networks:
+  pixelmage-net:
+    driver: bridge
 
 volumes:
-  mssql-data:
+  pg-data:
   redis-data:
   n8n-data:

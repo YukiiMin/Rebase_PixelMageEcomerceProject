@@ -5,10 +5,16 @@ import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import com.example.PixelMageEcomerceProject.entity.CardTemplate;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,10 +38,10 @@ public class DivineHelper {
     @JsonBackReference("cardTemplate-divineHelper")
     private CardTemplate cardTemplate;
 
-    @Column(name = "upright_meaning", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "upright_meaning", columnDefinition = "TEXT")
     private String uprightMeaning;
 
-    @Column(name = "reversed_meaning", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "reversed_meaning", columnDefinition = "TEXT")
     private String reversedMeaning;
 
     @Column(name = "zodiac_sign", length = 50)
@@ -44,7 +50,7 @@ public class DivineHelper {
     @Column(name = "element", length = 50)
     private String element;
 
-    @Column(name = "keywords", columnDefinition = "NVARCHAR(500)")
+    @Column(name = "keywords", columnDefinition = "VARCHAR(500)")
     private String keywords;
 
     @CreationTimestamp
