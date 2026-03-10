@@ -19,6 +19,7 @@ public interface OrderService {
     
     Order updateOrder(Integer id, OrderRequestDTO orderRequestDTO);
     void deleteOrder(Integer id);
+    Order cancelOrder(Integer id);
     Optional<Order> getOrderById(Integer id);
     List<Order> getAllOrders();
     List<Order> getOrdersByCustomerId(Integer customerId);

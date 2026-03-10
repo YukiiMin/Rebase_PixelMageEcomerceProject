@@ -1,15 +1,17 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.PixelMageEcomerceProject.dto.request.ProductRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Product;
 import com.example.PixelMageEcomerceProject.repository.ProductRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.ProductService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -33,10 +35,14 @@ public class ProductServiceImpl implements ProductService {
         Optional<Product> existingProduct = productRepository.findById(id);
         if (existingProduct.isPresent()) {
             Product updatedProduct = existingProduct.get();
-            updatedProduct.setName(productRequestDTO.getName());
-            updatedProduct.setDescription(productRequestDTO.getDescription());
-            updatedProduct.setPrice(productRequestDTO.getPrice());
-            updatedProduct.setImageUrl(productRequestDTO.getImageUrl());
+            if (productRequestDTO.getName() != null)
+                updatedProduct.setName(productRequestDTO.getName());
+            if (productRequestDTO.getDescription() != null)
+                updatedProduct.setDescription(productRequestDTO.getDescription());
+            if (productRequestDTO.getPrice() != null)
+                updatedProduct.setPrice(productRequestDTO.getPrice());
+            if (productRequestDTO.getImageUrl() != null)
+                updatedProduct.setImageUrl(productRequestDTO.getImageUrl());
             return productRepository.save(updatedProduct);
         }
         throw new RuntimeException("Product not found with id: " + id);

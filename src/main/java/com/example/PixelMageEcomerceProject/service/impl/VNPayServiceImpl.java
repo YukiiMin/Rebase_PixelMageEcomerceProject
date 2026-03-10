@@ -19,8 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.PixelMageEcomerceProject.config.VNPayConfig;
 import com.example.PixelMageEcomerceProject.entity.Order;
+import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.entity.Payment;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
+import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.repository.PaymentRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.VNPayService;
 
@@ -34,6 +36,7 @@ public class VNPayServiceImpl implements VNPayService {
     private final VNPayConfig vnPayConfig;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
+    private final PackRepository packRepository;
 
     @Override
     public String createPaymentUrl(Integer orderId, int amount, String orderInfo, String ipAddress) {
@@ -137,6 +140,17 @@ public class VNPayServiceImpl implements VNPayService {
                         if (order != null && "PENDING".equals(order.getPaymentStatus())) {
                             order.setPaymentStatus("PAID");
                             order.setStatus("PROCESSING");
+
+                            if (order.getOrderItems() != null) {
+                                order.getOrderItems().forEach(item -> {
+                                    if (item.getPack() != null && "RESERVED".equals(item.getPack().getStatus())) {
+                                        Pack pack = item.getPack();
+                                        pack.setStatus("SOLD");
+                                        packRepository.save(pack);
+                                    }
+                                });
+                            }
+                            order.setStatus("COMPLETED");
                             orderRepository.save(order);
 
                             // Save payment record

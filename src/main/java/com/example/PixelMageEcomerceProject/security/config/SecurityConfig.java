@@ -26,6 +26,7 @@ import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2Authentication
 import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import com.example.PixelMageEcomerceProject.security.service.CustomUserDetailsService;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -97,6 +98,23 @@ public class SecurityConfig {
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authenticationProvider(authenticationProvider())
+                                .exceptionHandling(exceptions -> exceptions
+                                                .authenticationEntryPoint((request, response, authException) -> {
+                                                        if (request.getRequestURI().startsWith("/api/")) {
+                                                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                                                                                "Unauthorized");
+                                                        } else {
+                                                                response.sendRedirect("/login");
+                                                        }
+                                                })
+                                                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                                                        if (request.getRequestURI().startsWith("/api/")) {
+                                                                response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                                                                                "Forbidden");
+                                                        } else {
+                                                                response.sendRedirect("/login");
+                                                        }
+                                                }))
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();

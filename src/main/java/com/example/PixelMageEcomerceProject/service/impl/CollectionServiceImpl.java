@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -7,17 +8,19 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.PixelMageEcomerceProject.dto.request.AdminCollectionItemRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.request.AdminCollectionRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.CollectionItemRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.CollectionRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Card;
 import com.example.PixelMageEcomerceProject.entity.CardCollection;
+import com.example.PixelMageEcomerceProject.entity.CardTemplate;
 import com.example.PixelMageEcomerceProject.entity.CollectionItem;
 import com.example.PixelMageEcomerceProject.entity.Order;
-import com.example.PixelMageEcomerceProject.entity.OrderItem;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.CardCollectionRepository;
-import com.example.PixelMageEcomerceProject.repository.CardRepository;
+import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
 import com.example.PixelMageEcomerceProject.repository.CollectionItemRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.CollectionService;
@@ -32,7 +35,7 @@ public class CollectionServiceImpl implements CollectionService {
     private final CardCollectionRepository cardCollectionRepository;
     private final CollectionItemRepository collectionItemRepository;
     private final AccountRepository accountRepository;
-    private final CardRepository cardRepository;
+    private final CardTemplateRepository cardTemplateRepository;
     private final OrderRepository orderRepository;
 
     // ==================== Collection CRUD ====================
@@ -46,7 +49,10 @@ public class CollectionServiceImpl implements CollectionService {
         collection.setAccount(account);
         collection.setCollectionName(request.getCollectionName());
         collection.setDescription(request.getDescription());
-        collection.setIsPublic(request.getIsPublic() != null ? request.getIsPublic() : false);
+        Boolean isPublic = request.getIsPublic() != null ? request.getIsPublic() : false;
+        collection.setIsPublic(isPublic);
+        collection.setIsVisible(isPublic);
+        collection.setSource("USER");
 
         return cardCollectionRepository.save(collection);
     }
@@ -94,46 +100,90 @@ public class CollectionServiceImpl implements CollectionService {
 
     @Override
     public List<CardCollection> getPublicCollections() {
-        return cardCollectionRepository.findAllPublicCollections();
+        return cardCollectionRepository.findAllVisibleCollections(LocalDateTime.now());
+    }
+
+    @Override
+    public CardCollection createAdminCollection(Integer adminId, AdminCollectionRequestDTO request) {
+        Account admin = accountRepository.findById(adminId)
+                .orElseThrow(() -> new RuntimeException("Admin account not found with id: " + adminId));
+
+        CardCollection collection = new CardCollection();
+        collection.setCollectionName(request.getCollectionName());
+        collection.setDescription(request.getDescription());
+        collection.setCollectionType(
+                request.getCollectionType() != null ? request.getCollectionType() : "STANDARD");
+        collection.setStartTime(request.getStartTime());
+        collection.setEndTime(request.getEndTime());
+        collection.setRewardType(request.getRewardType());
+        collection.setRewardData(request.getRewardData());
+        collection.setIsVisible(request.getIsVisible() != null ? request.getIsVisible() : Boolean.FALSE);
+        collection.setIsPublic(true);
+        collection.setSource("SYSTEM");
+        collection.setCreatedByAdmin(admin);
+        collection.setAccount(admin); // Set owner for admin collection
+
+        CardCollection savedCollection = cardCollectionRepository.save(collection);
+
+        if (request.getItems() != null) {
+            for (AdminCollectionItemRequestDTO itemDto : request.getItems()) {
+                CardTemplate cardTemplate = cardTemplateRepository.findById(itemDto.getCardTemplateId())
+                        .orElseThrow(() -> new RuntimeException(
+                                "CardTemplate not found with id: " + itemDto.getCardTemplateId()));
+
+                CollectionItem item = new CollectionItem();
+                item.setCardCollection(savedCollection);
+                item.setCardTemplate(cardTemplate);
+                item.setRequiredQuantity(
+                        itemDto.getRequiredQuantity() != null ? itemDto.getRequiredQuantity() : 1);
+
+                collectionItemRepository.save(item);
+            }
+        }
+
+        return savedCollection;
+    }
+
+    @Override
+    public CardCollection updateCollectionVisibility(Integer collectionId, Boolean isVisible) {
+        CardCollection collection = cardCollectionRepository.findById(collectionId)
+                .orElseThrow(() -> new RuntimeException("Collection not found with id: " + collectionId));
+        collection.setIsVisible(isVisible != null ? isVisible : collection.getIsVisible());
+        return cardCollectionRepository.save(collection);
     }
 
     // ==================== Collection Items ====================
 
     @Override
     public CollectionItem addCardToCollection(Integer customerId, CollectionItemRequestDTO request) {
-        // 1. Verify collection belongs to customer
+        // 1. Verify collection belongs to customer (Admin)
         CardCollection collection = cardCollectionRepository
                 .findByCollectionIdAndAccountCustomerId(request.getCollectionId(), customerId)
                 .orElseThrow(() -> new RuntimeException(
                         "Collection not found with id: " + request.getCollectionId() + " for customer: " + customerId));
 
-        // 2. Verify card exists
-        Card card = cardRepository.findById(request.getCardId())
-                .orElseThrow(() -> new RuntimeException("Card not found with id: " + request.getCardId()));
+        // 2. Verify cardTemplate exists
+        CardTemplate cardTemplate = cardTemplateRepository.findById(request.getCardTemplateId())
+                .orElseThrow(
+                        () -> new RuntimeException("CardTemplate not found with id: " + request.getCardTemplateId()));
 
-        // 3. Verify customer owns the card (purchased through completed & paid order)
-        if (!isCardOwnedByCustomer(customerId, request.getCardId())) {
-            throw new RuntimeException(
-                    "Card with id: " + request.getCardId() + " is not owned by customer: " + customerId
-                            + ". Card must be purchased (order COMPLETED & PAID) before adding to collection.");
+        // 3. Check if cardTemplate is already in collection
+        if (collectionItemRepository.existsByCardCollectionCollectionIdAndCardTemplateCardTemplateId(
+                request.getCollectionId(), request.getCardTemplateId())) {
+            throw new RuntimeException("Card template is already in this collection.");
         }
 
-        // 4. Check if card is already in collection
-        if (collectionItemRepository.existsByCardCollectionCollectionIdAndCardCardId(
-                request.getCollectionId(), request.getCardId())) {
-            throw new RuntimeException("Card is already in this collection.");
-        }
-
-        // 5. Add card to collection
+        // 4. Add template to collection
         CollectionItem item = new CollectionItem();
         item.setCardCollection(collection);
-        item.setCard(card);
+        item.setCardTemplate(cardTemplate);
+        item.setRequiredQuantity(request.getRequiredQuantity() != null ? request.getRequiredQuantity() : 1);
 
         return collectionItemRepository.save(item);
     }
 
     @Override
-    public void removeCardFromCollection(Integer customerId, Integer collectionId, Integer cardId) {
+    public void removeCardFromCollection(Integer customerId, Integer collectionId, Integer cardTemplateId) {
         // Verify collection belongs to customer
         cardCollectionRepository.findByCollectionIdAndAccountCustomerId(collectionId, customerId)
                 .orElseThrow(() -> new RuntimeException(
@@ -141,9 +191,9 @@ public class CollectionServiceImpl implements CollectionService {
 
         // Verify item exists
         CollectionItem item = collectionItemRepository
-                .findByCardCollectionCollectionIdAndCardCardId(collectionId, cardId)
+                .findByCardCollectionCollectionIdAndCardTemplateCardTemplateId(collectionId, cardTemplateId)
                 .orElseThrow(() -> new RuntimeException(
-                        "Card with id: " + cardId + " not found in collection: " + collectionId));
+                        "CardTemplate with id: " + cardTemplateId + " not found in collection: " + collectionId));
 
         collectionItemRepository.delete(item);
     }
@@ -171,7 +221,8 @@ public class CollectionServiceImpl implements CollectionService {
 
         return completedOrders.stream()
                 .flatMap(order -> order.getOrderItems().stream())
-                .map(OrderItem::getCard)
+                .flatMap(orderItem -> orderItem.getPack().getPackDetails().stream())
+                .map(packDetail -> packDetail.getCard())
                 .distinct()
                 .collect(Collectors.toList());
     }
@@ -185,6 +236,7 @@ public class CollectionServiceImpl implements CollectionService {
                 .stream()
                 .filter(order -> "COMPLETED".equals(order.getStatus()) && "PAID".equals(order.getPaymentStatus()))
                 .flatMap(order -> order.getOrderItems().stream())
-                .anyMatch(item -> item.getCard().getCardId().equals(cardId));
+                .flatMap(orderItem -> orderItem.getPack().getPackDetails().stream())
+                .anyMatch(packDetail -> packDetail.getCard().getCardId().equals(cardId));
     }
 }

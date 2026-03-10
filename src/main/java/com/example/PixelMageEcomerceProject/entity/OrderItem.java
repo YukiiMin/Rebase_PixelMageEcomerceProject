@@ -1,15 +1,25 @@
 package com.example.PixelMageEcomerceProject.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "ORDER_ITEMS")
@@ -29,9 +39,8 @@ public class OrderItem {
     private Order order;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "card_id", nullable = false, referencedColumnName = "card_id")
-    @JsonBackReference("card-orderItems")
-    private Card card;
+    @JoinColumn(name = "pack_id", nullable = false, referencedColumnName = "pack_id")
+    private Pack pack;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;

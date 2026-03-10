@@ -1,0 +1,146 @@
+package com.example.PixelMageEcomerceProject.service.impl;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.PixelMageEcomerceProject.entity.Account;
+import com.example.PixelMageEcomerceProject.entity.SetStory;
+import com.example.PixelMageEcomerceProject.entity.UserInventory;
+import com.example.PixelMageEcomerceProject.entity.UserStoryUnlock;
+import com.example.PixelMageEcomerceProject.repository.AccountRepository;
+import com.example.PixelMageEcomerceProject.repository.SetStoryRepository;
+import com.example.PixelMageEcomerceProject.repository.UserInventoryRepository;
+import com.example.PixelMageEcomerceProject.repository.UserStoryUnlockRepository;
+import com.example.PixelMageEcomerceProject.service.interfaces.SetStoryService;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class SetStoryServiceImpl implements SetStoryService {
+
+    private final SetStoryRepository setStoryRepository;
+    private final UserStoryUnlockRepository userStoryUnlockRepository;
+    private final UserInventoryRepository userInventoryRepository;
+    private final AccountRepository accountRepository;
+
+    @Override
+    public void checkAndUnlockStories(Integer userId) {
+        Account user = accountRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Account not found: " + userId));
+
+        List<SetStory> activeStories = setStoryRepository.findByIsActiveTrue();
+        if (activeStories.isEmpty()) {
+            return;
+        }
+
+        List<UserInventory> inventoryList = userInventoryRepository.findByUser_CustomerId(userId);
+        Set<Integer> ownedTemplateIds = new HashSet<>();
+        for (UserInventory inv : inventoryList) {
+            if (inv.getQuantity() != null && inv.getQuantity() > 0 && inv.getCardTemplate() != null) {
+                ownedTemplateIds.add(inv.getCardTemplate().getCardTemplateId());
+            }
+        }
+
+        for (SetStory story : activeStories) {
+            List<Integer> requiredTemplateIds = parseTemplateIds(story.getRequiredTemplateIds());
+            if (requiredTemplateIds.isEmpty()) {
+                continue;
+            }
+
+            boolean alreadyUnlocked = userStoryUnlockRepository
+                    .existsByUser_CustomerIdAndStory_StoryId(userId, story.getStoryId());
+            if (alreadyUnlocked) {
+                continue;
+            }
+
+            boolean hasAllRequired = ownedTemplateIds.containsAll(requiredTemplateIds);
+            if (!hasAllRequired) {
+                continue;
+            }
+
+            UserStoryUnlock unlock = new UserStoryUnlock();
+            unlock.setUser(user);
+            unlock.setStory(story);
+            userStoryUnlockRepository.save(unlock);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SetStory> getAllStories() {
+        return setStoryRepository.findAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SetStory> getUnlockedStories(Integer userId) {
+        List<UserStoryUnlock> unlocks = userStoryUnlockRepository.findByUser_CustomerId(userId);
+        List<SetStory> stories = new ArrayList<>();
+        for (UserStoryUnlock unlock : unlocks) {
+            stories.add(unlock.getStory());
+        }
+        return stories;
+    }
+
+    @Override
+    public SetStory createStory(SetStory story) {
+        return setStoryRepository.save(story);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SetStory getStoryById(Integer id) {
+        return setStoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Story not found with id: " + id));
+    }
+
+    @Override
+    public SetStory updateStory(SetStory story) {
+        return setStoryRepository.save(story);
+    }
+
+    @Override
+    public void deleteStory(Integer id) {
+        if (!setStoryRepository.existsById(id)) {
+            throw new RuntimeException("Story not found with id: " + id);
+        }
+        setStoryRepository.deleteById(id);
+    }
+
+    private List<Integer> parseTemplateIds(String raw) {
+        List<Integer> result = new ArrayList<>();
+        if (raw == null || raw.isBlank()) {
+            return result;
+        }
+
+        String cleaned = raw.trim();
+        if (cleaned.startsWith("[")) {
+            cleaned = cleaned.substring(1);
+        }
+        if (cleaned.endsWith("]")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 1);
+        }
+
+        String[] parts = cleaned.split(",");
+        for (String part : parts) {
+            String token = part.trim();
+            if (token.isEmpty()) {
+                continue;
+            }
+            try {
+                result.add(Integer.parseInt(token));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        return result;
+    }
+}
+

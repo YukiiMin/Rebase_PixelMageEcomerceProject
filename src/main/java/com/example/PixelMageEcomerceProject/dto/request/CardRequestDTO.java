@@ -8,8 +8,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CardRequestDTO {
-    private String nfcUuid;
+    private String nfcUid;
     private Integer cardTemplateId;
     private Integer productId;
     private String customText;
+    private String status;
+    private String serialNumber;
+    private String productionBatch;
+    private String cardCondition;
+    private Integer ownerAccountId;
 }

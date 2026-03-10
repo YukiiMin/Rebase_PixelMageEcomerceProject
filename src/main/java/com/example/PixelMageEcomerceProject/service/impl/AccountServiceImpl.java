@@ -131,7 +131,7 @@ public class AccountServiceImpl implements AccountService {
         String token = authenticationService.generateToken(accountOpt);
 
         return Map.of(
-                "token", token,
+                "accessToken", token,
                 "account", accountOpt);
     }
 }

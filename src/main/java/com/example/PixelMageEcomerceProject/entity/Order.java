@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "ORDERS")
-@SQLRestriction("is_active = 1")
+@SQLRestriction("is_active = true")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -45,11 +45,12 @@ public class Order {
     @JsonBackReference("account-orders")
     private Account account;
 
+    @CreationTimestamp
     @Column(name = "order_date", nullable = false)
     private LocalDateTime orderDate;
 
     @Column(name = "status", nullable = false, length = 50)
-    private String status; // PENDING, PROCESSING, COMPLETED, CANCELLED
+    private String status = "PENDING"; // PENDING, PROCESSING, COMPLETED, CANCELLED
 
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
@@ -78,7 +79,7 @@ public class Order {
     private Boolean isActive = true;
 
     // Relationship: Order 1-N OrderItem
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JsonManagedReference("order-orderItems")
     private List<OrderItem> orderItems;
 

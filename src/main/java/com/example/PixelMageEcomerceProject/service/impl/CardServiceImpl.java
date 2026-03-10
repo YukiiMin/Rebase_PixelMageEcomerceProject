@@ -10,6 +10,7 @@ import com.example.PixelMageEcomerceProject.dto.request.CardRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Card;
 import com.example.PixelMageEcomerceProject.entity.CardTemplate;
 import com.example.PixelMageEcomerceProject.entity.Product;
+import com.example.PixelMageEcomerceProject.enums.CardProductStatus;
 import com.example.PixelMageEcomerceProject.repository.CardRepository;
 import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
 import com.example.PixelMageEcomerceProject.repository.ProductRepository;
@@ -27,7 +28,7 @@ public class CardServiceImpl implements CardService {
     private final ProductRepository productRepository;
 
     @Override
-    public Card createCard(CardRequestDTO cardRequestDTO) {
+    public Card createCardProduct(CardRequestDTO cardRequestDTO) {
         CardTemplate cardTemplate = cardTemplateRepository.findById(cardRequestDTO.getCardTemplateId())
                 .orElseThrow(() -> new RuntimeException(
                         "CardTemplate not found with id: " + cardRequestDTO.getCardTemplateId()));
@@ -36,11 +37,36 @@ public class CardServiceImpl implements CardService {
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + cardRequestDTO.getProductId()));
 
         Card card = new Card();
-        card.setNfcUuid(cardRequestDTO.getNfcUuid());
         card.setCardTemplate(cardTemplate);
         card.setProduct(product);
         card.setCustomText(cardRequestDTO.getCustomText());
+        card.setProductionBatch(cardRequestDTO.getProductionBatch());
+        card.setCardCondition(cardRequestDTO.getCardCondition() != null ? cardRequestDTO.getCardCondition() : "NEW");
+        card.setStatus(CardProductStatus.PENDING_BIND.name());
 
+        return cardRepository.save(card);
+    }
+
+    @Override
+    public Card bindNFC(Integer cardId, String nfcUid) {
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new RuntimeException("Card not found with id: " + cardId));
+
+        Optional<Card> existing = cardRepository.findByNfcUid(nfcUid);
+        if (existing.isPresent() && !existing.get().getCardId().equals(cardId)) {
+            throw new RuntimeException("NFC UID already bound to another card");
+        }
+
+        card.setNfcUid(nfcUid);
+        card.setStatus(CardProductStatus.READY.name());
+        return cardRepository.save(card);
+    }
+
+    @Override
+    public Card updateStatus(Integer cardId, String newStatus) {
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new RuntimeException("Card not found with id: " + cardId));
+        card.setStatus(newStatus);
         return cardRepository.save(card);
     }
 
@@ -49,7 +75,6 @@ public class CardServiceImpl implements CardService {
         Optional<Card> existingCard = cardRepository.findById(id);
         if (existingCard.isPresent()) {
             Card updatedCard = existingCard.get();
-            updatedCard.setNfcUuid(cardRequestDTO.getNfcUuid());
 
             if (cardRequestDTO.getCardTemplateId() != null) {
                 CardTemplate cardTemplate = cardTemplateRepository.findById(cardRequestDTO.getCardTemplateId())
@@ -65,6 +90,13 @@ public class CardServiceImpl implements CardService {
                 updatedCard.setProduct(product);
             }
 
+            if (cardRequestDTO.getProductionBatch() != null) {
+                updatedCard.setProductionBatch(cardRequestDTO.getProductionBatch());
+            }
+            if (cardRequestDTO.getCardCondition() != null) {
+                updatedCard.setCardCondition(cardRequestDTO.getCardCondition());
+            }
+
             updatedCard.setCustomText(cardRequestDTO.getCustomText());
             return cardRepository.save(updatedCard);
         }
@@ -75,7 +107,7 @@ public class CardServiceImpl implements CardService {
     public void deleteCard(Integer id) {
         Card card = cardRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Card not found with id: " + id));
-        card.setIsActive(false);
+        card.setStatus(CardProductStatus.DEACTIVATED.name());
         cardRepository.save(card);
     }
 
@@ -90,7 +122,7 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
-    public Optional<Card> getCardByNfcUuid(String nfcUuid) {
-        return cardRepository.findByNfcUuid(nfcUuid);
+    public Optional<Card> getCardByNfcUid(String nfcUid) {
+        return cardRepository.findByNfcUid(nfcUid);
     }
 }

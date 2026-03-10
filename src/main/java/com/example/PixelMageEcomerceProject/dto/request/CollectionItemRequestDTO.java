@@ -9,5 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CollectionItemRequestDTO {
     private Integer collectionId;
-    private Integer cardId;
+    private Integer cardTemplateId;
+    private Integer requiredQuantity = 1;
 }

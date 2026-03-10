@@ -1,19 +1,21 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
-import com.example.PixelMageEcomerceProject.dto.request.OrderItemRequestDTO;
-import com.example.PixelMageEcomerceProject.entity.Card;
-import com.example.PixelMageEcomerceProject.entity.Order;
-import com.example.PixelMageEcomerceProject.entity.OrderItem;
-import com.example.PixelMageEcomerceProject.repository.CardRepository;
-import com.example.PixelMageEcomerceProject.repository.OrderItemRepository;
-import com.example.PixelMageEcomerceProject.repository.OrderRepository;
-import com.example.PixelMageEcomerceProject.service.interfaces.OrderItemService;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import com.example.PixelMageEcomerceProject.dto.request.OrderItemRequestDTO;
+import com.example.PixelMageEcomerceProject.entity.Order;
+import com.example.PixelMageEcomerceProject.entity.OrderItem;
+import com.example.PixelMageEcomerceProject.entity.Pack;
+import com.example.PixelMageEcomerceProject.repository.OrderItemRepository;
+import com.example.PixelMageEcomerceProject.repository.OrderRepository;
+import com.example.PixelMageEcomerceProject.repository.PackRepository;
+import com.example.PixelMageEcomerceProject.service.interfaces.OrderItemService;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -22,19 +24,20 @@ public class OrderItemServiceImpl implements OrderItemService {
 
     private final OrderItemRepository orderItemRepository;
     private final OrderRepository orderRepository;
-    private final CardRepository cardRepository;
+    private final PackRepository packRepository;
 
     @Override
     public OrderItem createOrderItem(OrderItemRequestDTO orderItemRequestDTO) {
         Order order = orderRepository.findById(orderItemRequestDTO.getOrderId())
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderItemRequestDTO.getOrderId()));
+                .orElseThrow(
+                        () -> new RuntimeException("Order not found with id: " + orderItemRequestDTO.getOrderId()));
 
-        Card card = cardRepository.findById(orderItemRequestDTO.getCardId())
-                .orElseThrow(() -> new RuntimeException("Card not found with id: " + orderItemRequestDTO.getCardId()));
+        Pack pack = packRepository.findById(orderItemRequestDTO.getPackId())
+                .orElseThrow(() -> new RuntimeException("Pack not found with id: " + orderItemRequestDTO.getPackId()));
 
         OrderItem orderItem = new OrderItem();
         orderItem.setOrder(order);
-        orderItem.setCard(card);
+        orderItem.setPack(pack);
         orderItem.setQuantity(orderItemRequestDTO.getQuantity());
         orderItem.setUnitPrice(orderItemRequestDTO.getUnitPrice());
         orderItem.setSubtotal(orderItemRequestDTO.getSubtotal());
@@ -51,14 +54,16 @@ public class OrderItemServiceImpl implements OrderItemService {
 
             if (orderItemRequestDTO.getOrderId() != null) {
                 Order order = orderRepository.findById(orderItemRequestDTO.getOrderId())
-                        .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderItemRequestDTO.getOrderId()));
+                        .orElseThrow(() -> new RuntimeException(
+                                "Order not found with id: " + orderItemRequestDTO.getOrderId()));
                 updatedOrderItem.setOrder(order);
             }
 
-            if (orderItemRequestDTO.getCardId() != null) {
-                Card card = cardRepository.findById(orderItemRequestDTO.getCardId())
-                        .orElseThrow(() -> new RuntimeException("Card not found with id: " + orderItemRequestDTO.getCardId()));
-                updatedOrderItem.setCard(card);
+            if (orderItemRequestDTO.getPackId() != null) {
+                Pack pack = packRepository.findById(orderItemRequestDTO.getPackId())
+                        .orElseThrow(() -> new RuntimeException(
+                                "Pack not found with id: " + orderItemRequestDTO.getPackId()));
+                updatedOrderItem.setPack(pack);
             }
 
             updatedOrderItem.setQuantity(orderItemRequestDTO.getQuantity());
@@ -94,7 +99,7 @@ public class OrderItemServiceImpl implements OrderItemService {
     }
 
     @Override
-    public List<OrderItem> getOrderItemsByCardId(Integer cardId) {
-        return orderItemRepository.findByCardCardId(cardId);
+    public List<OrderItem> getOrderItemsByPackId(Integer packId) {
+        return orderItemRepository.findByPackPackId(packId);
     }
 }

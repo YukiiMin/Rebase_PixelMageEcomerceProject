@@ -27,7 +27,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "COLLECTIONS")
-@SQLRestriction("is_active = 1")
+@SQLRestriction("is_active = true")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -62,6 +62,31 @@ public class CardCollection {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    @Column(name = "collection_type", length = 20)
+    private String collectionType = "STANDARD";
+
+    @Column(name = "start_time")
+    private LocalDateTime startTime;
+
+    @Column(name = "end_time")
+    private LocalDateTime endTime;
+
+    @Column(name = "is_visible", nullable = false)
+    private Boolean isVisible = true;
+
+    @Column(name = "reward_type", length = 50)
+    private String rewardType;
+
+    @Column(name = "reward_data", columnDefinition = "TEXT")
+    private String rewardData;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_admin_id")
+    private Account createdByAdmin;
+
+    @Column(name = "source", length = 10, nullable = false)
+    private String source = "SYSTEM";
 
     // Relationship: Collection 1-N CollectionItem
     @OneToMany(mappedBy = "cardCollection", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

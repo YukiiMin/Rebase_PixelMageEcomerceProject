@@ -2,16 +2,25 @@ package com.example.PixelMageEcomerceProject.service.impl;
 
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Order;
+import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.entity.Payment;
 import com.example.PixelMageEcomerceProject.exceptions.PaymentNotFoundException;
 import com.example.PixelMageEcomerceProject.exceptions.PaymentProcessingException;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
+import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.repository.PaymentRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
 import com.stripe.exception.StripeException;
-import com.stripe.model.*;
-import com.stripe.param.*;
+import com.stripe.model.Customer;
+import com.stripe.model.PaymentIntent;
+import com.stripe.model.PaymentMethod;
+import com.stripe.model.PaymentMethodCollection;
+import com.stripe.model.SetupIntent;
+import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentMethodListParams;
+import com.stripe.param.SetupIntentCreateParams;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +43,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
+    private final PackRepository packRepository;
 
     @Override
     public PaymentIntent createPaymentIntent(Integer orderId, BigDecimal amount, String currency) {
@@ -162,12 +172,11 @@ public class PaymentServiceImpl implements PaymentService {
             if ("succeeded".equals(paymentIntent.getStatus())) {
                 payment.setProcessedAt(LocalDateTime.now());
                 payment.setNetAmount(payment.getAmount().subtract(calculateProcessingFee(payment.getAmount())));
-                
-                // Update order payment status
+
                 order.setPaymentStatus("PAID");
-                orderRepository.save(order);
+                updateOrderAndPacksOnPaymentSuccess(order);
             }
-            
+
             return paymentRepository.save(payment);
             
         } catch (StripeException e) {
@@ -189,13 +198,12 @@ public class PaymentServiceImpl implements PaymentService {
         if ("SUCCEEDED".equals(status)) {
             payment.setProcessedAt(LocalDateTime.now());
             payment.setNetAmount(payment.getAmount().subtract(calculateProcessingFee(payment.getAmount())));
-            
-            // Update order payment status
+
             Order order = payment.getOrder();
             order.setPaymentStatus("PAID");
-            orderRepository.save(order);
+            updateOrderAndPacksOnPaymentSuccess(order);
         }
-        
+
         return paymentRepository.save(payment);
     }
 
@@ -285,6 +293,20 @@ public class PaymentServiceImpl implements PaymentService {
         BigDecimal percentageFee = amount.multiply(new BigDecimal("0.029"));
         BigDecimal fixedFee = new BigDecimal("0.30");
         return percentageFee.add(fixedFee).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private void updateOrderAndPacksOnPaymentSuccess(Order order) {
+        if (order.getOrderItems() != null) {
+            order.getOrderItems().forEach(item -> {
+                if (item.getPack() != null && "RESERVED".equals(item.getPack().getStatus())) {
+                    Pack pack = item.getPack();
+                    pack.setStatus("SOLD");
+                    packRepository.save(pack);
+                }
+            });
+        }
+        order.setStatus("COMPLETED");
+        orderRepository.save(order);
     }
 
     private Payment savePaymentRecordFromIntent(Order order, PaymentIntent paymentIntent, boolean isSavedPaymentMethod) {
