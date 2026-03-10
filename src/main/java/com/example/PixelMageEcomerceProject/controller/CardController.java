@@ -1,7 +1,6 @@
 package com.example.PixelMageEcomerceProject.controller;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,46 +43,35 @@ public class CardController {
                         @ApiResponse(responseCode = "201", description = "Card created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> createCard(@RequestBody CardRequestDTO cardRequestDTO) {
+        public ResponseEntity<ResponseBase<Card>> createCard(@RequestBody CardRequestDTO cardRequestDTO) {
                 try {
                         Card createdCard = cardService.createCardProduct(cardRequestDTO);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.CREATED.value(),
-                                        "Card created successfully",
-                                        createdCard);
-                        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+                        return ResponseBase.created(createdCard, "Card created successfully");
                 } catch (Exception e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.BAD_REQUEST.value(),
-                                        "Failed to create card: " + e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                        return ResponseBase.error(HttpStatus.BAD_REQUEST, "Failed to create card: " + e.getMessage());
                 }
         }
 
         @PostMapping("/bind")
         @Operation(summary = "Bind NFC to a card", description = "Assigns an NFC UID to a card and changes status to READY")
-        public ResponseEntity<ResponseBase> bindNFC(@RequestParam Integer cardId, @RequestParam String nfcUid) {
+        public ResponseEntity<ResponseBase<Card>> bindNFC(@RequestParam Integer cardId, @RequestParam String nfcUid) {
                 try {
                         Card card = cardService.bindNFC(cardId, nfcUid);
-                        return ResponseEntity
-                                        .ok(new ResponseBase(HttpStatus.OK.value(), "NFC bound successfully", card));
+                        return ResponseBase.ok(card, "NFC bound successfully");
                 } catch (Exception e) {
-                        return ResponseEntity.status(HttpStatus.CONFLICT)
-                                        .body(new ResponseBase(HttpStatus.CONFLICT.value(), e.getMessage(), null));
+                        return ResponseBase.error(HttpStatus.CONFLICT, e.getMessage());
                 }
         }
 
         @PutMapping("/{id}/status")
         @Operation(summary = "Update card status", description = "Override card status directly")
-        public ResponseEntity<ResponseBase> updateStatus(@PathVariable Integer id, @RequestParam String newStatus) {
+        public ResponseEntity<ResponseBase<Card>> updateStatus(@PathVariable Integer id,
+                        @RequestParam String newStatus) {
                 try {
                         Card card = cardService.updateStatus(id, newStatus);
-                        return ResponseEntity.ok(
-                                        new ResponseBase(HttpStatus.OK.value(), "Status updated successfully", card));
+                        return ResponseBase.ok(card, "Status updated successfully");
                 } catch (Exception e) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                                        .body(new ResponseBase(HttpStatus.BAD_REQUEST.value(), e.getMessage(), null));
+                        return ResponseBase.error(HttpStatus.BAD_REQUEST, e.getMessage());
                 }
         }
 
@@ -92,13 +80,9 @@ public class CardController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Cards retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getAllCards() {
+        public ResponseEntity<ResponseBase<List<Card>>> getAllCards() {
                 List<Card> cards = cardService.getAllCards();
-                ResponseBase response = new ResponseBase(
-                                HttpStatus.OK.value(),
-                                "Cards retrieved successfully",
-                                cards);
-                return ResponseEntity.ok(response);
+                return ResponseBase.ok(cards, "Cards retrieved successfully");
         }
 
         @GetMapping("/{id}")
@@ -107,21 +91,11 @@ public class CardController {
                         @ApiResponse(responseCode = "200", description = "Card found", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Card not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getCardById(@PathVariable Integer id) {
-                Optional<Card> card = cardService.getCardById(id);
-                if (card.isPresent()) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Card found",
-                                        card.get());
-                        return ResponseEntity.ok(response);
-                } else {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        "Card not found with id: " + id,
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-                }
+        public ResponseEntity<ResponseBase<Card>> getCardById(@PathVariable Integer id) {
+                return cardService.getCardById(id)
+                                .map(card -> ResponseBase.ok(card, "Card found"))
+                                .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND,
+                                                "Card not found with id: " + id));
         }
 
         @GetMapping("/nfc/{nfcUid}")
@@ -130,21 +104,11 @@ public class CardController {
                         @ApiResponse(responseCode = "200", description = "Card found", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Card not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getCardByNfcUid(@PathVariable String nfcUid) {
-                Optional<Card> card = cardService.getCardByNfcUid(nfcUid);
-                if (card.isPresent()) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Card found",
-                                        card.get());
-                        return ResponseEntity.ok(response);
-                } else {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        "Card not found with NFC UID: " + nfcUid,
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-                }
+        public ResponseEntity<ResponseBase<Card>> getCardByNfcUid(@PathVariable String nfcUid) {
+                return cardService.getCardByNfcUid(nfcUid)
+                                .map(card -> ResponseBase.ok(card, "Card found"))
+                                .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND,
+                                                "Card not found with NFC UID: " + nfcUid));
         }
 
         @PutMapping("/{id}")
@@ -153,21 +117,13 @@ public class CardController {
                         @ApiResponse(responseCode = "200", description = "Card updated successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Card not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> updateCard(@PathVariable Integer id,
+        public ResponseEntity<ResponseBase<Card>> updateCard(@PathVariable Integer id,
                         @RequestBody CardRequestDTO cardRequestDTO) {
                 try {
                         Card updatedCard = cardService.updateCard(id, cardRequestDTO);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Card updated successfully",
-                                        updatedCard);
-                        return ResponseEntity.ok(response);
+                        return ResponseBase.ok(updatedCard, "Card updated successfully");
                 } catch (RuntimeException e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
                 }
         }
 
@@ -177,20 +133,12 @@ public class CardController {
                         @ApiResponse(responseCode = "200", description = "Card deleted successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Card not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> deleteCard(@PathVariable Integer id) {
+        public ResponseEntity<ResponseBase<Void>> deleteCard(@PathVariable Integer id) {
                 try {
                         cardService.deleteCard(id);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Card deleted successfully",
-                                        null);
-                        return ResponseEntity.ok(response);
+                        return ResponseBase.ok(null, "Card deleted successfully");
                 } catch (RuntimeException e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
                 }
         }
 }

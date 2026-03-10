@@ -28,37 +28,37 @@ public class NFCScanController {
 
     @PostMapping("/scan")
     @Operation(summary = "Scan NFC card", description = "Scan an NFC card and return action (LINK_PROMPT or VIEW_CONTENT)")
-    public ResponseEntity<ResponseBase> scanNFC(@RequestParam String nfcUid, @RequestParam Integer userId) {
+    public ResponseEntity<ResponseBase<Map<String, Object>>> scanNFC(@RequestParam String nfcUid,
+            @RequestParam Integer userId) {
         try {
             Map<String, Object> result = nfcScanService.scanNFC(nfcUid, userId);
-            return ResponseEntity.ok(new ResponseBase(HttpStatus.OK.value(), "Scan successful", result));
+            return ResponseBase.ok(result, "Scan successful");
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ResponseBase(HttpStatus.BAD_REQUEST.value(), e.getMessage(), null));
+            return ResponseBase.error(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 
     @PostMapping("/link")
     @Operation(summary = "Link NFC card", description = "Link a scanned NFC card to a user account")
-    public ResponseEntity<ResponseBase> linkCard(@RequestParam String nfcUid, @RequestParam Integer userId) {
+    public ResponseEntity<ResponseBase<Map<String, Object>>> linkCard(@RequestParam String nfcUid,
+            @RequestParam Integer userId) {
         try {
             Map<String, Object> result = nfcScanService.linkCard(nfcUid, userId);
-            return ResponseEntity.ok(new ResponseBase(HttpStatus.OK.value(), "Card linked successfully", result));
+            return ResponseBase.ok(result, "Card linked successfully");
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ResponseBase(HttpStatus.BAD_REQUEST.value(), e.getMessage(), null));
+            return ResponseBase.error(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 
     @PostMapping("/unlink")
     @Operation(summary = "Unlink NFC card", description = "Unlink an NFC card from your account")
-    public ResponseEntity<ResponseBase> unlinkCard(@RequestParam String nfcUid, @RequestParam Integer userId) {
+    public ResponseEntity<ResponseBase<Map<String, Object>>> unlinkCard(@RequestParam String nfcUid,
+            @RequestParam Integer userId) {
         try {
             Map<String, Object> result = nfcScanService.unlinkCard(nfcUid, userId);
-            return ResponseEntity.ok(new ResponseBase(HttpStatus.OK.value(), "Card unlinked successfully", result));
+            return ResponseBase.ok(result, "Card unlinked successfully");
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ResponseBase(HttpStatus.BAD_REQUEST.value(), e.getMessage(), null));
+            return ResponseBase.error(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 }

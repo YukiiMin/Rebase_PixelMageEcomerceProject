@@ -35,6 +35,7 @@ public class UserInventory {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Account user;
 
     @ManyToOne(fetch = FetchType.EAGER)

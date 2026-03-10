@@ -1,7 +1,6 @@
 package com.example.PixelMageEcomerceProject.controller;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,20 +42,12 @@ public class OrderController {
                         @ApiResponse(responseCode = "201", description = "Order created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> createOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
+        public ResponseEntity<ResponseBase<Order>> createOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
                 try {
                         Order createdOrder = orderService.createOrder(orderRequestDTO);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.CREATED.value(),
-                                        "Order created successfully",
-                                        createdOrder);
-                        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+                        return ResponseBase.created(createdOrder, "Order created successfully");
                 } catch (Exception e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.BAD_REQUEST.value(),
-                                        "Failed to create order: " + e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                        return ResponseBase.error(HttpStatus.BAD_REQUEST, "Failed to create order: " + e.getMessage());
                 }
         }
 
@@ -65,13 +56,9 @@ public class OrderController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Orders retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getAllOrders() {
+        public ResponseEntity<ResponseBase<List<Order>>> getAllOrders() {
                 List<Order> orders = orderService.getAllOrders();
-                ResponseBase response = new ResponseBase(
-                                HttpStatus.OK.value(),
-                                "Orders retrieved successfully",
-                                orders);
-                return ResponseEntity.ok(response);
+                return ResponseBase.ok(orders, "Orders retrieved successfully");
         }
 
         @GetMapping("/{id}")
@@ -80,21 +67,11 @@ public class OrderController {
                         @ApiResponse(responseCode = "200", description = "Order found", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getOrderById(@PathVariable Integer id) {
-                Optional<Order> order = orderService.getOrderById(id);
-                if (order.isPresent()) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Order found",
-                                        order.get());
-                        return ResponseEntity.ok(response);
-                } else {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        "Order not found with id: " + id,
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-                }
+        public ResponseEntity<ResponseBase<Order>> getOrderById(@PathVariable Integer id) {
+                return orderService.getOrderById(id)
+                                .map(order -> ResponseBase.ok(order, "Order found"))
+                                .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND,
+                                                "Order not found with id: " + id));
         }
 
         @GetMapping("/customer/{customerId}")
@@ -102,13 +79,9 @@ public class OrderController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getOrdersByCustomerId(@PathVariable Integer customerId) {
+        public ResponseEntity<ResponseBase<List<Order>>> getOrdersByCustomerId(@PathVariable Integer customerId) {
                 List<Order> orders = orderService.getOrdersByCustomerId(customerId);
-                ResponseBase response = new ResponseBase(
-                                HttpStatus.OK.value(),
-                                "Orders retrieved successfully",
-                                orders);
-                return ResponseEntity.ok(response);
+                return ResponseBase.ok(orders, "Orders retrieved successfully");
         }
 
         @GetMapping("/status/{status}")
@@ -116,13 +89,9 @@ public class OrderController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getOrdersByStatus(@PathVariable String status) {
+        public ResponseEntity<ResponseBase<List<Order>>> getOrdersByStatus(@PathVariable String status) {
                 List<Order> orders = orderService.getOrdersByStatus(status);
-                ResponseBase response = new ResponseBase(
-                                HttpStatus.OK.value(),
-                                "Orders retrieved successfully",
-                                orders);
-                return ResponseEntity.ok(response);
+                return ResponseBase.ok(orders, "Orders retrieved successfully");
         }
 
         @PutMapping("/{id}")
@@ -131,21 +100,13 @@ public class OrderController {
                         @ApiResponse(responseCode = "200", description = "Order updated successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> updateOrder(@PathVariable Integer id,
+        public ResponseEntity<ResponseBase<Order>> updateOrder(@PathVariable Integer id,
                         @RequestBody OrderRequestDTO orderRequestDTO) {
                 try {
                         Order updatedOrder = orderService.updateOrder(id, orderRequestDTO);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Order updated successfully",
-                                        updatedOrder);
-                        return ResponseEntity.ok(response);
+                        return ResponseBase.ok(updatedOrder, "Order updated successfully");
                 } catch (RuntimeException e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
                 }
         }
 
@@ -155,20 +116,12 @@ public class OrderController {
                         @ApiResponse(responseCode = "200", description = "Order deleted successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> deleteOrder(@PathVariable Integer id) {
+        public ResponseEntity<ResponseBase<Void>> deleteOrder(@PathVariable Integer id) {
                 try {
                         orderService.deleteOrder(id);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Order deleted successfully",
-                                        null);
-                        return ResponseEntity.ok(response);
+                        return ResponseBase.ok(null, "Order deleted successfully");
                 } catch (RuntimeException e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
                 }
         }
 
@@ -178,20 +131,12 @@ public class OrderController {
                         @ApiResponse(responseCode = "200", description = "Order cancelled successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> cancelOrder(@PathVariable Integer id) {
+        public ResponseEntity<ResponseBase<Order>> cancelOrder(@PathVariable Integer id) {
                 try {
                         Order cancelledOrder = orderService.cancelOrder(id);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Order cancelled successfully",
-                                        cancelledOrder);
-                        return ResponseEntity.ok(response);
+                        return ResponseBase.ok(cancelledOrder, "Order cancelled successfully");
                 } catch (RuntimeException e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        "Failed to cancel order: " + e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, "Failed to cancel order: " + e.getMessage());
                 }
         }
 }

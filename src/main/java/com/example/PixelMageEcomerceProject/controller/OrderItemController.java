@@ -1,7 +1,6 @@
 package com.example.PixelMageEcomerceProject.controller;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,20 +42,14 @@ public class OrderItemController {
                         @ApiResponse(responseCode = "201", description = "Order item created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> createOrderItem(@RequestBody OrderItemRequestDTO orderItemRequestDTO) {
+        public ResponseEntity<ResponseBase<OrderItem>> createOrderItem(
+                        @RequestBody OrderItemRequestDTO orderItemRequestDTO) {
                 try {
                         OrderItem createdOrderItem = orderItemService.createOrderItem(orderItemRequestDTO);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.CREATED.value(),
-                                        "Order item created successfully",
-                                        createdOrderItem);
-                        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+                        return ResponseBase.created(createdOrderItem, "Order item created successfully");
                 } catch (Exception e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.BAD_REQUEST.value(),
-                                        "Failed to create order item: " + e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                        return ResponseBase.error(HttpStatus.BAD_REQUEST,
+                                        "Failed to create order item: " + e.getMessage());
                 }
         }
 
@@ -65,13 +58,9 @@ public class OrderItemController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Order items retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getAllOrderItems() {
+        public ResponseEntity<ResponseBase<List<OrderItem>>> getAllOrderItems() {
                 List<OrderItem> orderItems = orderItemService.getAllOrderItems();
-                ResponseBase response = new ResponseBase(
-                                HttpStatus.OK.value(),
-                                "Order items retrieved successfully",
-                                orderItems);
-                return ResponseEntity.ok(response);
+                return ResponseBase.ok(orderItems, "Order items retrieved successfully");
         }
 
         @GetMapping("/{id}")
@@ -80,21 +69,11 @@ public class OrderItemController {
                         @ApiResponse(responseCode = "200", description = "Order item found", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order item not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getOrderItemById(@PathVariable Integer id) {
-                Optional<OrderItem> orderItem = orderItemService.getOrderItemById(id);
-                if (orderItem.isPresent()) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Order item found",
-                                        orderItem.get());
-                        return ResponseEntity.ok(response);
-                } else {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        "Order item not found with id: " + id,
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-                }
+        public ResponseEntity<ResponseBase<OrderItem>> getOrderItemById(@PathVariable Integer id) {
+                return orderItemService.getOrderItemById(id)
+                                .map(orderItem -> ResponseBase.ok(orderItem, "Order item found"))
+                                .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND,
+                                                "Order item not found with id: " + id));
         }
 
         @GetMapping("/order/{orderId}")
@@ -102,13 +81,9 @@ public class OrderItemController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Order items found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getOrderItemsByOrderId(@PathVariable Integer orderId) {
+        public ResponseEntity<ResponseBase<List<OrderItem>>> getOrderItemsByOrderId(@PathVariable Integer orderId) {
                 List<OrderItem> orderItems = orderItemService.getOrderItemsByOrderId(orderId);
-                ResponseBase response = new ResponseBase(
-                                HttpStatus.OK.value(),
-                                "Order items retrieved successfully",
-                                orderItems);
-                return ResponseEntity.ok(response);
+                return ResponseBase.ok(orderItems, "Order items retrieved successfully");
         }
 
         @GetMapping("/pack/{packId}")
@@ -116,13 +91,9 @@ public class OrderItemController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Order items found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> getOrderItemsByPackId(@PathVariable Integer packId) {
+        public ResponseEntity<ResponseBase<List<OrderItem>>> getOrderItemsByPackId(@PathVariable Integer packId) {
                 List<OrderItem> orderItems = orderItemService.getOrderItemsByPackId(packId);
-                ResponseBase response = new ResponseBase(
-                                HttpStatus.OK.value(),
-                                "Order items retrieved successfully",
-                                orderItems);
-                return ResponseEntity.ok(response);
+                return ResponseBase.ok(orderItems, "Order items retrieved successfully");
         }
 
         @PutMapping("/{id}")
@@ -131,21 +102,13 @@ public class OrderItemController {
                         @ApiResponse(responseCode = "200", description = "Order item updated successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order item not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> updateOrderItem(@PathVariable Integer id,
+        public ResponseEntity<ResponseBase<OrderItem>> updateOrderItem(@PathVariable Integer id,
                         @RequestBody OrderItemRequestDTO orderItemRequestDTO) {
                 try {
                         OrderItem updatedOrderItem = orderItemService.updateOrderItem(id, orderItemRequestDTO);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Order item updated successfully",
-                                        updatedOrderItem);
-                        return ResponseEntity.ok(response);
+                        return ResponseBase.ok(updatedOrderItem, "Order item updated successfully");
                 } catch (RuntimeException e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
                 }
         }
 
@@ -155,20 +118,12 @@ public class OrderItemController {
                         @ApiResponse(responseCode = "200", description = "Order item deleted successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order item not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase> deleteOrderItem(@PathVariable Integer id) {
+        public ResponseEntity<ResponseBase<Void>> deleteOrderItem(@PathVariable Integer id) {
                 try {
                         orderItemService.deleteOrderItem(id);
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.OK.value(),
-                                        "Order item deleted successfully",
-                                        null);
-                        return ResponseEntity.ok(response);
+                        return ResponseBase.ok(null, "Order item deleted successfully");
                 } catch (RuntimeException e) {
-                        ResponseBase response = new ResponseBase(
-                                        HttpStatus.NOT_FOUND.value(),
-                                        e.getMessage(),
-                                        null);
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
                 }
         }
 }

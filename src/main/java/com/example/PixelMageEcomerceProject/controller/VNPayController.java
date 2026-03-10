@@ -31,7 +31,7 @@ public class VNPayController {
 
     @PostMapping("/create-payment")
     @Operation(summary = "Create VNPay payment URL", description = "Generate VNPay redirect URL for payment")
-    public ResponseEntity<ResponseBase> createPayment(
+    public ResponseEntity<ResponseBase<Map<String, String>>> createPayment(
             @RequestParam Integer orderId,
             @RequestParam int amount,
             @RequestParam(required = false, defaultValue = "Thanh toan don hang PixelMage") String orderInfo,
@@ -44,18 +44,10 @@ public class VNPayController {
             Map<String, String> result = new HashMap<>();
             result.put("paymentUrl", paymentUrl);
 
-            ResponseBase response = new ResponseBase(
-                    HttpStatus.OK.value(),
-                    "VNPay payment URL created successfully",
-                    result);
-            return ResponseEntity.ok(response);
+            return ResponseBase.ok(result, "VNPay payment URL created successfully");
 
         } catch (Exception e) {
-            ResponseBase response = new ResponseBase(
-                    HttpStatus.BAD_REQUEST.value(),
-                    "Failed to create VNPay payment URL: " + e.getMessage(),
-                    null);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            return ResponseBase.error(HttpStatus.BAD_REQUEST, "Failed to create VNPay payment URL: " + e.getMessage());
         }
     }
 

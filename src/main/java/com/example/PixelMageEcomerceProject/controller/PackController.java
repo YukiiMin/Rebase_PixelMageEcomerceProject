@@ -34,49 +34,45 @@ public class PackController {
 
     @PostMapping("/create")
     @Operation(summary = "Create a pack (Manufacturing)", description = "Run RNG logic to pick card templates inside a pack product")
-    public ResponseEntity<ResponseBase> createPack(@RequestBody PackRequestDTO requestDTO) {
+    public ResponseEntity<ResponseBase<Pack>> createPack(@RequestBody PackRequestDTO requestDTO) {
         try {
             Pack pack = packService.createPack(requestDTO);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(new ResponseBase(HttpStatus.CREATED.value(), "Pack generated successfully via RNG", pack));
+            return ResponseBase.created(pack, "Pack generated successfully via RNG");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ResponseBase(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage(), null));
+            return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
     @PutMapping("/{id}/status")
     @Operation(summary = "Update pack status", description = "Update the status (e.g., STOCKED, RESERVED, SOLD)")
-    public ResponseEntity<ResponseBase> updatePackStatus(@PathVariable Integer id, @RequestParam String status) {
+    public ResponseEntity<ResponseBase<Pack>> updatePackStatus(@PathVariable Integer id, @RequestParam String status) {
         try {
             Pack pack = packService.updatePackStatus(id, status);
-            return ResponseEntity.ok(new ResponseBase(HttpStatus.OK.value(), "Pack status updated", pack));
+            return ResponseBase.ok(pack, "Pack status updated");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ResponseBase(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage(), null));
+            return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
     @GetMapping("/available")
     @Operation(summary = "Get available packs", description = "Retrieve packs that are STOCKED")
-    public ResponseEntity<ResponseBase> getAvailablePacks() {
+    public ResponseEntity<ResponseBase<List<Pack>>> getAvailablePacks() {
         List<Pack> packs = packService.getPacksByStatus("STOCKED");
-        return ResponseEntity.ok(new ResponseBase(HttpStatus.OK.value(), "Available packs retrieved", packs));
+        return ResponseBase.ok(packs, "Available packs retrieved");
     }
 
     @GetMapping
     @Operation(summary = "Get all packs", description = "Retrieve all packs")
-    public ResponseEntity<ResponseBase> getAllPacks() {
+    public ResponseEntity<ResponseBase<List<Pack>>> getAllPacks() {
         List<Pack> packs = packService.getAllPacks();
-        return ResponseEntity.ok(new ResponseBase(HttpStatus.OK.value(), "Packs retrieved", packs));
+        return ResponseBase.ok(packs, "Packs retrieved");
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get pack by ID", description = "Retrieve a specific pack detail including its cards")
-    public ResponseEntity<ResponseBase> getPackById(@PathVariable Integer id) {
+    public ResponseEntity<ResponseBase<Pack>> getPackById(@PathVariable Integer id) {
         return packService.getPackById(id)
-                .map(pack -> ResponseEntity.ok(new ResponseBase(HttpStatus.OK.value(), "Pack found", pack)))
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ResponseBase(HttpStatus.NOT_FOUND.value(), "Pack not found", null)));
+                .map(pack -> ResponseBase.ok(pack, "Pack found"))
+                .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND, "Pack not found"));
     }
 }

@@ -1,10 +1,9 @@
 package com.example.PixelMageEcomerceProject.controller;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,36 +13,30 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
 import com.example.PixelMageEcomerceProject.entity.Spread;
 import com.example.PixelMageEcomerceProject.service.interfaces.TarotReadingService;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/api/v1/readings")
+@RequiredArgsConstructor
 @CrossOrigin("*")
 public class TarotReadingController {
 
-    @Autowired
-    private TarotReadingService tarotReadingService;
-
-    // Helper method for standard response
-    private ResponseEntity<Map<String, Object>> response(boolean success, String message, Object data) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("success", success);
-        body.put("message", message);
-        body.put("data", data);
-        return ResponseEntity.ok(body);
-    }
+    private final TarotReadingService tarotReadingService;
 
     /**
      * Lấy danh sách các kiểu trải bài (Spread)
      */
     @GetMapping("/spreads")
-    public ResponseEntity<Map<String, Object>> getSpreads() {
+    public ResponseEntity<ResponseBase<List<Spread>>> getSpreads() {
         try {
             List<Spread> spreads = tarotReadingService.getAllSpreads();
-            return response(true, "Success", spreads);
+            return ResponseBase.ok(spreads, "Success");
         } catch (Exception e) {
-            return response(false, e.getMessage(), null);
+            return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -51,7 +44,7 @@ public class TarotReadingController {
      * Bắt đầu một phiên bốc bài mới
      */
     @PostMapping("/sessions")
-    public ResponseEntity<Map<String, Object>> createSession(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<ResponseBase<Map<String, Object>>> createSession(@RequestBody Map<String, Object> payload) {
         try {
             // Hardcode accountId=1 for testing purpose. Usually we get it from JWT Context
             Integer accountId = 1;
@@ -59,9 +52,9 @@ public class TarotReadingController {
             String mode = (String) payload.get("mode");
 
             Map<String, Object> result = tarotReadingService.createSession(accountId, spreadId, mode);
-            return response(true, "Session created successfully", result);
+            return ResponseBase.ok(result, "Session created successfully");
         } catch (Exception e) {
-            return response(false, e.getMessage(), null);
+            return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -69,14 +62,14 @@ public class TarotReadingController {
      * Người dùng lật bài (Gán thẻ bài vào vị trí)
      */
     @PostMapping("/sessions/{id}/draw")
-    public ResponseEntity<Map<String, Object>> drawCards(@PathVariable("id") Integer sessionId,
+    public ResponseEntity<ResponseBase<Map<String, Object>>> drawCards(@PathVariable("id") Integer sessionId,
             @RequestBody Map<String, Object> payload) {
         try {
             Boolean allowReversed = (Boolean) payload.getOrDefault("allowReversed", false);
             Map<String, Object> result = tarotReadingService.drawCards(sessionId, allowReversed);
-            return response(true, "Cards drawn and saved to session", result);
+            return ResponseBase.ok(result, "Cards drawn and saved to session");
         } catch (Exception e) {
-            return response(false, e.getMessage(), null);
+            return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -84,12 +77,12 @@ public class TarotReadingController {
      * Gọi trigger giải bài từ n8n/AI hoặc Fallback Local
      */
     @GetMapping("/sessions/{id}/interpret")
-    public ResponseEntity<Map<String, Object>> interpretSession(@PathVariable("id") Integer sessionId) {
+    public ResponseEntity<ResponseBase<Map<String, Object>>> interpretSession(@PathVariable("id") Integer sessionId) {
         try {
             Map<String, Object> result = tarotReadingService.interpretSession(sessionId);
-            return response(true, "Interpretation generated", result);
+            return ResponseBase.ok(result, "Interpretation generated");
         } catch (Exception e) {
-            return response(false, e.getMessage(), null);
+            return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 }
