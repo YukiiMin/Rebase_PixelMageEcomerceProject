@@ -33,10 +33,11 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "Accounts")
-@SQLRestriction("is_active = 1")
+@SQLRestriction("is_active = true")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Account implements UserDetails {
 
     @Id
@@ -44,7 +45,7 @@ public class Account implements UserDetails {
     @Column(name = "customer_id")
     private Integer customerId;
 
-    @Column(name = "email", nullable = false, length = 100)
+    @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
     @Column(name = "password", length = 100) // Made nullable for OAuth2 accounts
@@ -81,16 +82,19 @@ public class Account implements UserDetails {
     // Relationship: Account 1-N Order
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference("account-orders")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Order> orders;
 
     // Relationship: Account 1-N CardCollection
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference("account-collections")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<CardCollection> collections;
 
     // Relationship: Account 1-N ReadingSession
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference("account-readingSessions")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<ReadingSession> readingSessions;
 
     // UserDetails implementation

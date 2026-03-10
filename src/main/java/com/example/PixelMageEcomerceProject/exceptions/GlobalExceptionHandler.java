@@ -1,51 +1,60 @@
 package com.example.PixelMageEcomerceProject.exceptions;
 
-import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
-import com.stripe.exception.*;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
+import com.stripe.exception.ApiConnectionException;
+import com.stripe.exception.ApiException;
+import com.stripe.exception.AuthenticationException;
+import com.stripe.exception.CardException;
+import com.stripe.exception.InvalidRequestException;
+import com.stripe.exception.RateLimitException;
+import com.stripe.exception.StripeException;
+
+import lombok.extern.slf4j.Slf4j;
+
 /**
- * Global exception handler for payment-related and general application exceptions.
+ * Global exception handler for payment-related and general application
+ * exceptions.
  */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(PaymentNotFoundException.class)
-    public ResponseEntity<ResponseBase> handlePaymentNotFoundException(PaymentNotFoundException ex, WebRequest request) {
+    public ResponseEntity<ResponseBase> handlePaymentNotFoundException(PaymentNotFoundException ex,
+            WebRequest request) {
         log.error("Payment not found: {}", ex.getMessage());
         ResponseBase response = new ResponseBase(
                 HttpStatus.NOT_FOUND.value(),
                 ex.getMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     @ExceptionHandler(PaymentProcessingException.class)
-    public ResponseEntity<ResponseBase> handlePaymentProcessingException(PaymentProcessingException ex, WebRequest request) {
+    public ResponseEntity<ResponseBase> handlePaymentProcessingException(PaymentProcessingException ex,
+            WebRequest request) {
         log.error("Payment processing error: {}", ex.getMessage(), ex);
         ResponseBase response = new ResponseBase(
                 HttpStatus.BAD_REQUEST.value(),
                 ex.getMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(InvalidPaymentStateException.class)
-    public ResponseEntity<ResponseBase> handleInvalidPaymentStateException(InvalidPaymentStateException ex, WebRequest request) {
+    public ResponseEntity<ResponseBase> handleInvalidPaymentStateException(InvalidPaymentStateException ex,
+            WebRequest request) {
         log.error("Invalid payment state: {}", ex.getMessage());
         ResponseBase response = new ResponseBase(
                 HttpStatus.CONFLICT.value(),
                 ex.getMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
@@ -56,8 +65,7 @@ public class GlobalExceptionHandler {
         ResponseBase response = new ResponseBase(
                 HttpStatus.BAD_REQUEST.value(),
                 "Card error: " + ex.getUserMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
@@ -67,8 +75,7 @@ public class GlobalExceptionHandler {
         ResponseBase response = new ResponseBase(
                 HttpStatus.TOO_MANY_REQUESTS.value(),
                 "Rate limit exceeded. Please try again later.",
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
     }
 
@@ -78,8 +85,7 @@ public class GlobalExceptionHandler {
         ResponseBase response = new ResponseBase(
                 HttpStatus.BAD_REQUEST.value(),
                 "Invalid request: " + ex.getUserMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
@@ -89,8 +95,7 @@ public class GlobalExceptionHandler {
         ResponseBase response = new ResponseBase(
                 HttpStatus.UNAUTHORIZED.value(),
                 "Payment service authentication failed",
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
@@ -100,8 +105,7 @@ public class GlobalExceptionHandler {
         ResponseBase response = new ResponseBase(
                 HttpStatus.SERVICE_UNAVAILABLE.value(),
                 "Payment service temporarily unavailable. Please try again later.",
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
     }
 
@@ -111,8 +115,7 @@ public class GlobalExceptionHandler {
         ResponseBase response = new ResponseBase(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Payment service error. Please try again later.",
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
@@ -122,19 +125,18 @@ public class GlobalExceptionHandler {
         ResponseBase response = new ResponseBase(
                 HttpStatus.BAD_REQUEST.value(),
                 "Payment processing failed: " + ex.getUserMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ResponseBase> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
+    public ResponseEntity<ResponseBase> handleIllegalArgumentException(IllegalArgumentException ex,
+            WebRequest request) {
         log.error("Invalid argument: {}", ex.getMessage());
         ResponseBase response = new ResponseBase(
                 HttpStatus.BAD_REQUEST.value(),
                 "Invalid request parameters: " + ex.getMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
@@ -144,8 +146,7 @@ public class GlobalExceptionHandler {
         ResponseBase response = new ResponseBase(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "An unexpected error occurred: " + ex.getMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
@@ -154,9 +155,8 @@ public class GlobalExceptionHandler {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
         ResponseBase response = new ResponseBase(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "An unexpected error occurred. Please contact support.",
-                null
-        );
+                "An unexpected error occurred: " + ex.getMessage(),
+                null);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }

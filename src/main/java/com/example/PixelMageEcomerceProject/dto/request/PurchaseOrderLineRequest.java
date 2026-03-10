@@ -1,16 +1,16 @@
 package com.example.PixelMageEcomerceProject.dto.request;
 
+import java.time.LocalDate;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class PurchaseOrderLineRequest {
+    private Integer productId;
     private int quantityOrdered;
     private int quantityReceived;
     private int quantityPendingReceived;

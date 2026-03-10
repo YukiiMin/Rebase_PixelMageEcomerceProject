@@ -119,12 +119,24 @@ public class OrderServiceImpl implements OrderService {
                 updatedOrder.setAccount(account);
             }
 
-            updatedOrder.setOrderDate(orderRequestDTO.getOrderDate());
-            updatedOrder.setStatus(orderRequestDTO.getStatus());
-            updatedOrder.setTotalAmount(orderRequestDTO.getTotalAmount());
-            updatedOrder.setShippingAddress(orderRequestDTO.getShippingAddress());
-            updatedOrder.setPaymentMethod(orderRequestDTO.getPaymentMethod());
-            updatedOrder.setPaymentStatus(orderRequestDTO.getPaymentStatus());
+            if (orderRequestDTO.getOrderDate() != null) {
+                updatedOrder.setOrderDate(orderRequestDTO.getOrderDate());
+            }
+            if (orderRequestDTO.getStatus() != null) {
+                updatedOrder.setStatus(orderRequestDTO.getStatus());
+            }
+            if (orderRequestDTO.getTotalAmount() != null) {
+                updatedOrder.setTotalAmount(orderRequestDTO.getTotalAmount());
+            }
+            if (orderRequestDTO.getShippingAddress() != null) {
+                updatedOrder.setShippingAddress(orderRequestDTO.getShippingAddress());
+            }
+            if (orderRequestDTO.getPaymentMethod() != null) {
+                updatedOrder.setPaymentMethod(orderRequestDTO.getPaymentMethod());
+            }
+            if (orderRequestDTO.getPaymentStatus() != null) {
+                updatedOrder.setPaymentStatus(orderRequestDTO.getPaymentStatus());
+            }
 
             if ("PAID".equals(orderRequestDTO.getPaymentStatus()) && updatedOrder.getOrderItems() != null) {
                 for (OrderItem item : updatedOrder.getOrderItems()) {
@@ -136,7 +148,9 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
 
-            updatedOrder.setNotes(orderRequestDTO.getNotes());
+            if (orderRequestDTO.getNotes() != null) {
+                updatedOrder.setNotes(orderRequestDTO.getNotes());
+            }
             return orderRepository.save(updatedOrder);
         }
         throw new RuntimeException("Order not found with id: " + id);

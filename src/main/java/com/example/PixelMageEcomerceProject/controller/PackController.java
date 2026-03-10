@@ -32,7 +32,7 @@ public class PackController {
 
     private final PackService packService;
 
-    @PostMapping
+    @PostMapping("/create")
     @Operation(summary = "Create a pack (Manufacturing)", description = "Run RNG logic to pick card templates inside a pack product")
     public ResponseEntity<ResponseBase> createPack(@RequestBody PackRequestDTO requestDTO) {
         try {
@@ -40,8 +40,8 @@ public class PackController {
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ResponseBase(HttpStatus.CREATED.value(), "Pack generated successfully via RNG", pack));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ResponseBase(HttpStatus.BAD_REQUEST.value(), e.getMessage(), null));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ResponseBase(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage(), null));
         }
     }
 
@@ -52,9 +52,16 @@ public class PackController {
             Pack pack = packService.updatePackStatus(id, status);
             return ResponseEntity.ok(new ResponseBase(HttpStatus.OK.value(), "Pack status updated", pack));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ResponseBase(HttpStatus.BAD_REQUEST.value(), e.getMessage(), null));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ResponseBase(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage(), null));
         }
+    }
+
+    @GetMapping("/available")
+    @Operation(summary = "Get available packs", description = "Retrieve packs that are STOCKED")
+    public ResponseEntity<ResponseBase> getAvailablePacks() {
+        List<Pack> packs = packService.getPacksByStatus("STOCKED");
+        return ResponseEntity.ok(new ResponseBase(HttpStatus.OK.value(), "Available packs retrieved", packs));
     }
 
     @GetMapping

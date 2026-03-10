@@ -27,7 +27,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "card_templates")
-@SQLRestriction("is_active = 1")
+@SQLRestriction("is_active = true")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

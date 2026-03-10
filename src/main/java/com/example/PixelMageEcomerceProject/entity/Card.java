@@ -29,6 +29,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Card {
 
     @Id
@@ -85,10 +86,7 @@ public class Card {
     // Relationship: Card 1-N CardContent
     @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference("card-cardContents")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<CardContent> cardContents;
 
-    // Relationship: Card 1-N CollectionItem
-    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference("card-collectionItems")
-    private List<CollectionItem> collectionItems;
 }

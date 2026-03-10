@@ -13,6 +13,7 @@ import com.example.PixelMageEcomerceProject.entity.CollectionItem;
 import com.example.PixelMageEcomerceProject.entity.UserCollectionProgress;
 import com.example.PixelMageEcomerceProject.entity.UserInventory;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
+import com.example.PixelMageEcomerceProject.repository.CardCollectionRepository;
 import com.example.PixelMageEcomerceProject.repository.CollectionItemRepository;
 import com.example.PixelMageEcomerceProject.repository.UserCollectionProgressRepository;
 import com.example.PixelMageEcomerceProject.repository.UserInventoryRepository;
@@ -29,6 +30,7 @@ public class UserCollectionProgressServiceImpl implements UserCollectionProgress
     private final CollectionItemRepository collectionItemRepository;
     private final UserInventoryRepository userInventoryRepository;
     private final AccountRepository accountRepository;
+    private final CardCollectionRepository cardCollectionRepository;
 
     @Override
     public void recalculateProgressForTemplate(Integer userId, Integer cardTemplateId) {
@@ -44,6 +46,37 @@ public class UserCollectionProgressServiceImpl implements UserCollectionProgress
                 .map(item -> item.getCardCollection())
                 .distinct()
                 .forEach(collection -> recalculateCollectionProgress(user, collection));
+    }
+
+    @Override
+    public List<UserCollectionProgress> getUserProgress(Integer userId) {
+        return progressRepository.findByUserCustomerId(userId);
+    }
+
+    @Override
+    public Optional<UserCollectionProgress> getCollectionProgress(Integer userId, Integer collectionId) {
+        Optional<UserCollectionProgress> progress = progressRepository
+                .findByUserCustomerIdAndCollectionCollectionId(userId, collectionId);
+        if (progress.isPresent()) {
+            return progress;
+        }
+
+        // If no progress record, check if collection exists to return 0% progress
+        return cardCollectionRepository.findById(collectionId).map(collection -> {
+            UserCollectionProgress virtualProgress = new UserCollectionProgress();
+            virtualProgress.setCollection(collection);
+            // We need the account as well
+            accountRepository.findById(userId).ifPresent(virtualProgress::setUser);
+            virtualProgress.setOwnedCount(0);
+            // Calculate total items in collection
+            int totalItems = collectionItemRepository.findByCardCollectionCollectionId(collectionId).stream()
+                    .mapToInt(com.example.PixelMageEcomerceProject.entity.CollectionItem::getRequiredQuantity)
+                    .sum();
+            virtualProgress.setRequiredCount(totalItems);
+            virtualProgress.setCompletionPercent(0.0);
+            virtualProgress.setIsCompleted(false);
+            return virtualProgress;
+        });
     }
 
     private void recalculateCollectionProgress(Account user, CardCollection collection) {

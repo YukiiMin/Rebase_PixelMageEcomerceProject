@@ -31,7 +31,7 @@ public class Spread {
     @Column(name = "spread_id")
     private Integer spreadId;
 
-    @Column(name = "name", nullable = false, length = 100)
+    @Column(name = "name", nullable = false, unique = true, length = 100)
     private String name;
 
     @Column(name = "description", columnDefinition = "VARCHAR(500)")

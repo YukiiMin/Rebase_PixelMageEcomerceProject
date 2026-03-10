@@ -26,6 +26,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class UserInventory {
 
     @Id
@@ -36,7 +37,7 @@ public class UserInventory {
     @JoinColumn(name = "user_id", nullable = false)
     private Account user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "card_template_id", nullable = false)
     private CardTemplate cardTemplate;
 
