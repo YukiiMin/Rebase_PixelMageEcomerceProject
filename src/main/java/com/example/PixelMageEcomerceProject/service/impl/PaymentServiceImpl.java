@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
+import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.Pack;
@@ -11,6 +12,7 @@ import com.example.PixelMageEcomerceProject.repository.OrderRepository;
 import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.repository.PaymentRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
+import com.example.PixelMageEcomerceProject.service.interfaces.WebSocketNotificationService;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
 import com.stripe.model.PaymentIntent;
@@ -28,8 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +46,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
     private final PackRepository packRepository;
+    private final WebSocketNotificationService wsNotificationService;
+    private final org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public PaymentIntent createPaymentIntent(Integer orderId, BigDecimal amount, String currency) {
@@ -175,6 +179,19 @@ public class PaymentServiceImpl implements PaymentService {
 
                 order.setPaymentStatus("PAID");
                 updateOrderAndPacksOnPaymentSuccess(order);
+
+                // Idempotency: mark webhook event as processed (24h TTL)
+                String idempotencyKey = "payment:stripe:" + stripePaymentIntentId;
+                if (Boolean.TRUE.equals(redisTemplate.hasKey(idempotencyKey))) {
+                    log.info("[PAYMENT] Duplicate webhook detected for PI: {} — skipping", stripePaymentIntentId);
+                    return paymentRepository.save(payment);
+                }
+                redisTemplate.opsForValue().set(idempotencyKey, "processed", Duration.ofHours(24));
+
+                // Push PAYMENT_CONFIRMED via WebSocket
+                Integer customerId = order.getAccount().getCustomerId();
+                wsNotificationService.pushToUser(customerId,
+                        NotificationEvent.paymentConfirmed(customerId, orderId, stripePaymentIntentId));
             }
 
             return paymentRepository.save(payment);
@@ -202,6 +219,12 @@ public class PaymentServiceImpl implements PaymentService {
             Order order = payment.getOrder();
             order.setPaymentStatus("PAID");
             updateOrderAndPacksOnPaymentSuccess(order);
+
+            // Push PAYMENT_CONFIRMED via WebSocket
+            Integer customerId = order.getAccount().getCustomerId();
+            wsNotificationService.pushToUser(customerId,
+                    NotificationEvent.paymentConfirmed(customerId, order.getOrderId(),
+                            payment.getStripePaymentIntentId()));
         }
 
         return paymentRepository.save(payment);

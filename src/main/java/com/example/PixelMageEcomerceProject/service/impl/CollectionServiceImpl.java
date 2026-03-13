@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -99,11 +101,13 @@ public class CollectionServiceImpl implements CollectionService {
     }
 
     @Override
+    @Cacheable("public-collections")
     public List<CardCollection> getPublicCollections() {
         return cardCollectionRepository.findAllVisibleCollections(LocalDateTime.now());
     }
 
     @Override
+    @CacheEvict(value = "public-collections", allEntries = true)
     public CardCollection createAdminCollection(Integer adminId, AdminCollectionRequestDTO request) {
         Account admin = accountRepository.findById(adminId)
                 .orElseThrow(() -> new RuntimeException("Admin account not found with id: " + adminId));

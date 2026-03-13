@@ -64,7 +64,8 @@ public class SecurityConfig {
                                                                 "/swagger-ui.html",
                                                                 "/swagger-resources/**",
                                                                 "/webjars/**",
-                                                                "/api-docs/**")
+                                                                "/api-docs/**",
+                                                                "/ws/**") // WebSocket STOMP handshake
                                                 .permitAll()
                                                 // Protected endpoints - JWT authentication required
                                                 .requestMatchers(

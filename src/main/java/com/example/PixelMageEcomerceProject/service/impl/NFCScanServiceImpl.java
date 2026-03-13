@@ -12,8 +12,10 @@ import com.example.PixelMageEcomerceProject.entity.Card;
 import com.example.PixelMageEcomerceProject.enums.CardProductStatus;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.CardRepository;
+import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
 import com.example.PixelMageEcomerceProject.service.interfaces.NFCScanService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
+import com.example.PixelMageEcomerceProject.service.interfaces.WebSocketNotificationService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +27,7 @@ public class NFCScanServiceImpl implements NFCScanService {
     private final CardRepository cardRepository;
     private final AccountRepository accountRepository;
     private final UserInventoryService userInventoryService;
+    private final WebSocketNotificationService wsNotificationService;
 
     @Override
     public Map<String, Object> scanNFC(String nfcUid, Integer userId) {
@@ -86,6 +89,13 @@ public class NFCScanServiceImpl implements NFCScanService {
         response.put("message", "Card linked successfully");
         response.put("card_info", card);
 
+        // Push real-time event đến FE/MO
+        wsNotificationService.pushToUser(userId, NotificationEvent.nfcLinked(userId, Map.of(
+                "cardId", card.getCardId(),
+                "nfcUid", nfcUid,
+                "cardTemplateName", card.getCardTemplate() != null ? card.getCardTemplate().getName() : ""
+        )));
+
         return response;
     }
 
@@ -116,6 +126,13 @@ public class NFCScanServiceImpl implements NFCScanService {
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Card unlinked successfully");
         response.put("card_info", card);
+
+        // Push real-time event đến FE/MO
+        wsNotificationService.pushToUser(userId, NotificationEvent.nfcUnlinked(userId, Map.of(
+                "cardId", card.getCardId(),
+                "nfcUid", nfcUid
+        )));
+
         return response;
     }
 }

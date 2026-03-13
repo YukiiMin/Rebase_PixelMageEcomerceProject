@@ -21,12 +21,13 @@ import com.example.PixelMageEcomerceProject.entity.ReadingCard;
 import com.example.PixelMageEcomerceProject.entity.ReadingSession;
 import com.example.PixelMageEcomerceProject.entity.Spread;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
-import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
 import com.example.PixelMageEcomerceProject.repository.DivineHelperRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingCardRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingSessionRepository;
 import com.example.PixelMageEcomerceProject.repository.SpreadRepository;
+import com.example.PixelMageEcomerceProject.service.interfaces.CardTemplateService;
 import com.example.PixelMageEcomerceProject.service.interfaces.TarotReadingService;
+import org.springframework.cache.annotation.Cacheable;
 
 @Service
 public class TarotReadingServiceImpl implements TarotReadingService {
@@ -41,13 +42,13 @@ public class TarotReadingServiceImpl implements TarotReadingService {
     private ReadingCardRepository readingCardRepository;
 
     @Autowired
-    private CardTemplateRepository cardTemplateRepository;
-
-    @Autowired
     private DivineHelperRepository divineHelperRepository;
 
     @Autowired
     private AccountRepository accountRepository;
+
+    @Autowired
+    private CardTemplateService cardTemplateService;
 
     @Value("${OPENAI_API_KEY:}")
     private String openAiApiKey;
@@ -59,6 +60,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Override
+    @Cacheable("spreads")
     public List<Spread> getAllSpreads() {
         return spreadRepository.findAll();
     }
@@ -99,7 +101,8 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         Spread spread = session.getSpread();
         int cardsToDraw = spread.getPositionCount();
 
-        List<CardTemplate> allCards = cardTemplateRepository.findAll();
+        // Dùng cached card pool thay vì gọi repo trực tiếp (tránh DB query mỗi request)
+        List<CardTemplate> allCards = cardTemplateService.getAllCardTemplates();
         if (allCards.size() < cardsToDraw) {
             throw new RuntimeException("Not enough cards in database to draw.");
         }

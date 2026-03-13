@@ -21,6 +21,7 @@ import com.example.PixelMageEcomerceProject.repository.OrderRepository;
 import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.OrderService;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
+import com.example.PixelMageEcomerceProject.service.interfaces.RedisLockService;
 import com.stripe.model.PaymentIntent;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class OrderServiceImpl implements OrderService {
     private final PaymentService paymentService;
     private final PackRepository packRepository;
     private final OrderItemRepository orderItemRepository;
+    private final RedisLockService redisLockService;
 
     @Override
     public Order createOrder(OrderRequestDTO orderRequestDTO) {
@@ -65,14 +67,23 @@ public class OrderServiceImpl implements OrderService {
                 item.setCustomText(itemDto.getCustomText());
 
                 if (itemDto.getPackId() != null) {
-                    Pack pack = packRepository.findById(itemDto.getPackId())
-                            .orElseThrow(() -> new RuntimeException("Pack not found: " + itemDto.getPackId()));
-                    if (!"STOCKED".equals(pack.getStatus())) {
-                        throw new RuntimeException("Pack is not STOCKED anymore");
+                    String lockKey = "pack:" + itemDto.getPackId() + ":lock";
+                    if (!redisLockService.tryLock(lockKey, 5)) {
+                        throw new RuntimeException(
+                                "Pack " + itemDto.getPackId() + " is currently being reserved. Please try again.");
                     }
-                    pack.setStatus("RESERVED");
-                    packRepository.save(pack);
-                    item.setPack(pack);
+                    try {
+                        Pack pack = packRepository.findById(itemDto.getPackId())
+                                .orElseThrow(() -> new RuntimeException("Pack not found: " + itemDto.getPackId()));
+                        if (!"STOCKED".equals(pack.getStatus())) {
+                            throw new RuntimeException("Pack is not STOCKED anymore");
+                        }
+                        pack.setStatus("RESERVED");
+                        packRepository.save(pack);
+                        item.setPack(pack);
+                    } finally {
+                        redisLockService.releaseLock(lockKey);
+                    }
                 }
 
                 items.add(item);
