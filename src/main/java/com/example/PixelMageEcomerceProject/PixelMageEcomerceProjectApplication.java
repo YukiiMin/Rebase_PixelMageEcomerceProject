@@ -13,5 +13,4 @@ public class PixelMageEcomerceProjectApplication {
 		DotEvnConfig.loadEnv();
 		SpringApplication.run(PixelMageEcomerceProjectApplication.class, args);
 	}
-
 }

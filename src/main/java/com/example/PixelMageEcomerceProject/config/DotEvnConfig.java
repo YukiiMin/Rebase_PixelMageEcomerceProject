@@ -9,6 +9,7 @@ public class DotEvnConfig {
         Dotenv dotenv = Dotenv
                 .configure()
                 .filename(".env")
+                .ignoreIfMissing()
                 .load();
         dotenv
                 .entries()

@@ -1,8 +1,14 @@
 package com.example.PixelMageEcomerceProject.security.config;
 
-import java.util.Arrays;
-import java.util.List;
 
+import com.example.PixelMageEcomerceProject.security.jwt.JwtAuthenticationFilter;
+import com.example.PixelMageEcomerceProject.security.service.CustomUserDetailsService;
+
+import jakarta.servlet.http.HttpServletResponse;
+
+import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2AuthenticationFailureHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,131 +27,114 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.example.PixelMageEcomerceProject.security.jwt.JwtAuthenticationFilter;
-import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2AuthenticationFailureHandler;
-import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2AuthenticationSuccessHandler;
-import com.example.PixelMageEcomerceProject.security.service.CustomUserDetailsService;
-
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(securedEnabled = true, jsr250Enabled = true)
+@EnableMethodSecurity(
+        securedEnabled = true,
+        jsr250Enabled = true
+)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-        private final JwtAuthenticationFilter jwtAuthFilter;
-        private final CustomUserDetailsService customUserDetailsService;
-        private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
-        private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
-        private final PasswordEncoder passwordEncoder;
+    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final CustomUserDetailsService customUserDetailsService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
+    private final PasswordEncoder passwordEncoder;
 
-        @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-                http
-                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                                .csrf(AbstractHttpConfigurer::disable)
-                                .authorizeHttpRequests(auth -> auth
-                                                // Public endpoints - no authentication required
-                                                .requestMatchers(
-                                                                "/api/auth/**", // Authentication endpoints
-                                                                "/api/accounts/login", // Login endpoint
-                                                                "/api/accounts/registration", // Registration endpoint
-                                                                "/api/accounts/exists/**", // Account exists check
-                                                                "/api/accounts/auth/**", // Account OAuth auth mapping
-                                                                "/api/vnpay/**", // VNPay callback and redirect
-                                                                "/api/v1/readings/**", // Public Tarot spreading
-                                                                                       // endpoints
-                                                                "/oauth2/**", // OAuth2 endpoints
-                                                                "/login/oauth2/**", // OAuth2 login callbacks
-                                                                "/v3/api-docs/**", // OpenAPI documentation
-                                                                "/swagger-ui/**", // Swagger UI
-                                                                "/swagger-ui.html",
-                                                                "/swagger-resources/**",
-                                                                "/webjars/**",
-                                                                "/api-docs/**",
-                                                                "/ws/**") // WebSocket STOMP handshake
-                                                .permitAll()
-                                                // Protected endpoints - JWT authentication required
-                                                .requestMatchers(
-                                                                "/api/payments/**", // Payment endpoints (high security)
-                                                                "/api/accounts/**", // Account management
-                                                                "/api/orders/**", // Order management
-                                                                "/api/roles/**", // Role management
-                                                                "/api/suppliers/**", // Supplier management
-                                                                "/api/purchase-orders/**", // Purchase order management
-                                                                "/api/warehouses/**", // Warehouse management
-                                                                "/api/inventory/**", // Inventory management
-                                                                "/api/products/**", // Product management
-                                                                "/api/order-items/**", // Order item management
-                                                                "/api/cards/**", // Card management
-                                                                "/api/card-price-tiers/**", // Card price tier
-                                                                                            // management
-                                                                "/api/card-templates/**", // Card template management
-                                                                "/api/card-contents/**", // Card content management
-                                                                "/api/collections/**", // Collection management
-                                                                "/api/warehouse-transactions/**", // Warehouse
-                                                                                                  // transaction
-                                                                                                  // management
-                                                                "/api/v1/**" // All v1 API endpoints
-                                                ).authenticated()
-                                                .anyRequest().authenticated() // All other requests require
-                                                                              // authentication
-                                )
-                                .oauth2Login(oauth2 -> oauth2
-                                                .successHandler(oAuth2AuthenticationSuccessHandler)
-                                                .failureHandler(oAuth2AuthenticationFailureHandler))
-                                .sessionManagement(session -> session
-                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                                .authenticationProvider(authenticationProvider())
-                                .exceptionHandling(exceptions -> exceptions
-                                                .authenticationEntryPoint((request, response, authException) -> {
-                                                        if (request.getRequestURI().startsWith("/api/")) {
-                                                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
-                                                                                "Unauthorized");
-                                                        } else {
-                                                                response.sendRedirect("/login");
-                                                        }
-                                                })
-                                                .accessDeniedHandler((request, response, accessDeniedException) -> {
-                                                        if (request.getRequestURI().startsWith("/api/")) {
-                                                                response.sendError(HttpServletResponse.SC_FORBIDDEN,
-                                                                                "Forbidden");
-                                                        } else {
-                                                                response.sendRedirect("/login");
-                                                        }
-                                                }))
-                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
+                .exceptionHandling(exception -> exception
+                        // Xử lý: Nếu chưa xác thực mà đòi vào endpoint private -> Trả về lỗi 401 JSON, KHÔNG redirect sang Google
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized - Vui lòng cung cấp Token hợp lệ");
+                        })
+                )
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints - no authentication required
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/api/accounts/login",
+                                "/api/accounts/registration",
+                                "/error",            // <--- QUAN TRỌNG: Phải public endpoint lỗi mặc định của Spring
+                                "/oauth2/**",
+                                "/login/oauth2/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**",
+                                "/webjars/**",
+                                "/api-docs/**"
+                        ).permitAll()
+                        // Protected endpoints - JWT authentication required
+                        .requestMatchers(
+                                "/api/payments/**",
+                                "/api/accounts/**",
+                                "/api/orders/**",
+                                "/api/roles/**",
+                                "/api/suppliers/**",
+                                "/api/purchase-orders/**",
+                                "/api/warehouses/**",
+                                "/api/inventory/**",
+                                "/api/products/**",
+                                "/api/order-items/**",
+                                "/api/cards/**",
+                                "/api/card-price-tiers/**",
+                                "/api/card-templates/**",
+                                "/api/card-contents/**",
+                                "/api/collections/**",
+                                "/api/warehouse-transactions/**",
+                                "/api/v1/**"
+                        ).authenticated()
+                        .anyRequest().authenticated()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(oAuth2AuthenticationSuccessHandler)
+                        .failureHandler(oAuth2AuthenticationFailureHandler)
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-                return http.build();
-        }
-
-        @Bean
-        public CorsConfigurationSource corsConfigurationSource() {
-                CorsConfiguration configuration = new CorsConfiguration();
-                // Allow multiple origins for development
-                configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-                configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-                configuration.setAllowedHeaders(List.of("*"));
-                configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
-                configuration.setAllowCredentials(true);
-                configuration.setMaxAge(3600L);
-                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-                source.registerCorsConfiguration("/**", configuration);
-                return source;
-        }
-
-        @Bean
-        public AuthenticationProvider authenticationProvider() {
-                DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-                authProvider.setUserDetailsService(customUserDetailsService);
-                authProvider.setPasswordEncoder(passwordEncoder);
-                return authProvider;
-        }
-
-        @Bean
-        public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-                return config.getAuthenticationManager();
-        }
+        return http.build();
 }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Allow multiple origins for development
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(customUserDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder);
+        return authProvider;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+}
+
