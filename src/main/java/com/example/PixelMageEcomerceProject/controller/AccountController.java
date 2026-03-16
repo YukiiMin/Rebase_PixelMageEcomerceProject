@@ -66,7 +66,7 @@ public class AccountController {
         /**
          * Get all accounts
          */
-        @GetMapping
+        @GetMapping("/list")
         @Operation(summary = "Get all accounts", description = "Retrieve a list of all user accounts in the system")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Accounts retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))

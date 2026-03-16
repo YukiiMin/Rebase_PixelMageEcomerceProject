@@ -28,16 +28,16 @@ public class Promotion {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "discount_type", length = 20)
+    @Column(name = "discount_type", nullable = false, length = 20)
     private String discountType;
 
-    @Column(name = "discount_value", precision = 10, scale = 2)
+    @Column(name = "discount_value", nullable = false, precision = 10, scale = 2)
     private BigDecimal discountValue;
 
-    @Column(name = "start_date")
+    @Column(name = "start_date", nullable = false)
     private LocalDateTime startDate;
 
-    @Column(name = "end_date")
+    @Column(name = "end_date", nullable = false)
     private LocalDateTime endDate;
 
     @CreationTimestamp
@@ -47,5 +47,8 @@ public class Promotion {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-}
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", referencedColumnName = "order_id")
+    private Order order;
+}
