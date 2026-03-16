@@ -1,14 +1,9 @@
 package com.example.PixelMageEcomerceProject.security.config;
 
 
-import com.example.PixelMageEcomerceProject.security.jwt.JwtAuthenticationFilter;
-import com.example.PixelMageEcomerceProject.security.service.CustomUserDetailsService;
+import java.util.Arrays;
+import java.util.List;
 
-import jakarta.servlet.http.HttpServletResponse;
-
-import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2AuthenticationSuccessHandler;
-import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2AuthenticationFailureHandler;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,8 +22,13 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.List;
+import com.example.PixelMageEcomerceProject.security.jwt.JwtAuthenticationFilter;
+import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2AuthenticationFailureHandler;
+import com.example.PixelMageEcomerceProject.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import com.example.PixelMageEcomerceProject.security.service.CustomUserDetailsService;
+
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -72,7 +72,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/swagger-resources/**",
                                 "/webjars/**",
-                                "/api-docs/**"
+                                "/api-docs/**",
+                                "/ws/**",
+                                "/ws/notifications/**"
                         ).permitAll()
                         // Protected endpoints - JWT authentication required
                         .requestMatchers(
@@ -92,7 +94,14 @@ public class SecurityConfig {
                                 "/api/card-contents/**",
                                 "/api/collections/**",
                                 "/api/warehouse-transactions/**",
-                                "/api/v1/**"
+                                "/api/v1/**",
+                                "/api/admin/collections/**",
+                                "/api/nfc/**",
+                                "/api/packs/**",
+                                "/api/stories/**",
+                                "/api/admin/stories/**",
+                                "/api/v1/readings/**",
+                                "/api/collections/progress/**"
                         ).authenticated()
                         .anyRequest().authenticated()
                 )
