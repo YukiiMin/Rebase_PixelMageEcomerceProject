@@ -16,7 +16,7 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U sa -d ExeProject || exit 1']
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d ExeProject || exit 1']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,44 +65,6 @@ services:
         limits:
           memory: 150M
           cpus: '0.25'
-
-    logging:
-      driver: json-file
-      options:
-        max-size: '5m'
-        max-file: '2'
-
-  n8n:
-    image: docker.n8n.io/n8nio/n8n
-    container_name: pixelmage-n8n
-
-    ports:
-      - '5678:5678'
-
-    environment:
-      N8N_HOST: localhost
-      N8N_PORT: 5678
-      N8N_PROTOCOL: http
-      NODE_ENV: production
-      WEBHOOK_URL: http://localhost:5678/
-      GENERIC_TIMEZONE: Asia/Ho_Chi_Minh
-
-      EXECUTIONS_PROCESS: main
-      N8N_METRICS: 'false'
-
-    volumes:
-      - n8n-data:/home/node/.n8n
-
-    networks:
-      - pixelmage-net
-
-    restart: unless-stopped
-
-    deploy:
-      resources:
-        limits:
-          memory: 300M
-          cpus: '0.35'
 
     logging:
       driver: json-file

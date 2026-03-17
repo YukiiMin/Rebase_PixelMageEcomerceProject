@@ -19,7 +19,7 @@ import com.example.PixelMageEcomerceProject.dto.request.AccountRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.LoginRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
 import com.example.PixelMageEcomerceProject.entity.Account;
-import com.example.PixelMageEcomerceProject.entity.AuthProvider;
+import com.example.PixelMageEcomerceProject.enums.AuthProvider;
 import com.example.PixelMageEcomerceProject.security.service.AuthenticationService;
 import com.example.PixelMageEcomerceProject.service.interfaces.AccountService;
 
@@ -42,26 +42,6 @@ public class AccountController {
 
         private final AccountService accountService;
         private final AuthenticationService authenticationService;
-
-        /**
-         * Create a new account
-         */
-        @PostMapping("/registration")
-        @Operation(summary = "Create a new account", description = "Create a new user account with email, password, name, phone number and role")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "201", description = "Account created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "400", description = "Bad request - Email already exists or invalid data", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<Account>> createAccount(
-                        @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Account details to create", required = true, content = @Content(schema = @Schema(implementation = AccountRequestDTO.class))) @RequestBody AccountRequestDTO account) {
-                try {
-                        Account createdAccount = accountService.createAccount(account);
-                        return ResponseBase.created(createdAccount, "Account created successfully");
-                } catch (RuntimeException e) {
-                        return ResponseBase.error(HttpStatus.BAD_REQUEST,
-                                        "Failed to create account: " + e.getMessage());
-                }
-        }
 
         /**
          * Get all accounts
@@ -165,7 +145,27 @@ public class AccountController {
                 return ResponseBase.ok(exists, "Email check completed");
         }
 
-        @PostMapping("/login")
+        /**
+         * Create a new account
+         */
+        @PostMapping("auth/registration")
+        @Operation(summary = "Create a new account", description = "Create a new user account with email, password, name, phone number and role")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "201", description = "Account created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
+                        @ApiResponse(responseCode = "400", description = "Bad request - Email already exists or invalid data", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
+        })
+        public ResponseEntity<ResponseBase<Account>> createAccount(
+                        @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Account details to create", required = true, content = @Content(schema = @Schema(implementation = AccountRequestDTO.class))) @RequestBody AccountRequestDTO account) {
+                try {
+                        Account createdAccount = accountService.createAccount(account);
+                        return ResponseBase.created(createdAccount, "Account created successfully");
+                } catch (RuntimeException e) {
+                        return ResponseBase.error(HttpStatus.BAD_REQUEST,
+                                        "Failed to create account: " + e.getMessage());
+                }
+        }
+
+        @PostMapping("auth/login")
         public ResponseEntity<ResponseBase<Map<String, Object>>> loginAccount(
                         @RequestBody LoginRequestDTO loginRequestDTO) {
                 try {

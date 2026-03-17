@@ -1,6 +1,7 @@
 package com.example.PixelMageEcomerceProject.security.service;
 
 import com.example.PixelMageEcomerceProject.entity.Account;
+import com.example.PixelMageEcomerceProject.enums.AuthProvider;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +47,7 @@ public class AuthenticationService {
      */
     public boolean canCreateOAuth2Account(String email) {
         return accountRepository.findByEmail(email)
-            .map(existing -> existing.getAuthProvider() == com.example.PixelMageEcomerceProject.entity.AuthProvider.LOCAL)
+            .map(existing -> existing.getAuthProvider() == AuthProvider.LOCAL)
             .orElse(true); // Can create if no account exists
     }
 }

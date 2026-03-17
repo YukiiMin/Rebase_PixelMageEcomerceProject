@@ -1,29 +1,33 @@
 package com.example.PixelMageEcomerceProject.security.oauth2;
 
-import com.example.PixelMageEcomerceProject.entity.Account;
-import com.example.PixelMageEcomerceProject.entity.AuthProvider;
-import com.example.PixelMageEcomerceProject.entity.Role;
-import com.example.PixelMageEcomerceProject.repository.AccountRepository;
-import com.example.PixelMageEcomerceProject.repository.RoleRepository;
-import com.example.PixelMageEcomerceProject.security.jwt.JwtTokenProvider;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.Optional;
+import com.example.PixelMageEcomerceProject.entity.Account;
+import com.example.PixelMageEcomerceProject.entity.Role;
+import com.example.PixelMageEcomerceProject.enums.AuthProvider;
+import com.example.PixelMageEcomerceProject.repository.AccountRepository;
+import com.example.PixelMageEcomerceProject.repository.RoleRepository;
+import com.example.PixelMageEcomerceProject.security.jwt.JwtTokenProvider;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * OAuth2 Authentication Success Handler
- * Handles successful Google OAuth2 authentication and integrates with existing JWT system
+ * Handles successful Google OAuth2 authentication and integrates with existing
+ * JWT system
  */
 @Slf4j
 @Component
@@ -33,19 +37,21 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final AccountRepository accountRepository;
     private final RoleRepository roleRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-                                        Authentication authentication) throws IOException {
-        
+            Authentication authentication) throws IOException {
+
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-        
+
         try {
             // Extract user information from Google
             Map<String, Object> attributes = oAuth2User.getAttributes();
             String email = (String) attributes.get("email");
             String name = (String) attributes.get("name");
-            String googleId = (String) attributes.get("id");
+            String googleId = (String) attributes.get("sub");
 
             log.info("Processing OAuth2 authentication for user: {}", email);
 
@@ -54,33 +60,32 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             // Generate JWT token using JwtTokenProvider
             String jwtToken = jwtTokenProvider.generateToken(
-                org.springframework.security.core.userdetails.User.builder()
-                    .username(account.getEmail())
-                    .password("") // OAuth2 accounts don't need passwords for JWT
-                    .authorities(account.getAuthorities())
-                    .build()
-            );
+                    org.springframework.security.core.userdetails.User.builder()
+                            .username(account.getEmail())
+                            .password("") // OAuth2 accounts don't need passwords for JWT
+                            .authorities(account.getAuthorities())
+                            .build());
 
             // Redirect to frontend with token
-            String redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/auth/success")
-                .queryParam("token", jwtToken)
-                .queryParam("email", account.getEmail())
-                .queryParam("name", account.getName())
-                .build()
-                .toUriString();
+            String redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/auth/success")
+                    .queryParam("token", jwtToken)
+                    .queryParam("email", account.getEmail())
+                    .queryParam("name", account.getName())
+                    .build()
+                    .toUriString();
 
             log.info("Redirecting user {} to: {}", email, redirectUrl);
             getRedirectStrategy().sendRedirect(request, response, redirectUrl);
 
         } catch (Exception e) {
             log.error("Error processing OAuth2 authentication", e);
-            
+
             // Redirect to error page
-            String errorUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/auth/error")
-                .queryParam("error", "authentication_failed")
-                .build()
-                .toUriString();
-                
+            String errorUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/auth/error")
+                    .queryParam("error", "authentication_failed")
+                    .build()
+                    .toUriString();
+
             getRedirectStrategy().sendRedirect(request, response, errorUrl);
         }
     }
@@ -122,8 +127,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
      */
     private Account createOAuth2Account(String email, String name, String providerId) {
         // Find customer role
-        Role customerRole = roleRepository.findByRoleName("customer")
-            .orElseThrow(() -> new RuntimeException("Customer role not found. Please ensure roles are initialized."));
+        Role customerRole = roleRepository.findByRoleName("USER")
+                .orElseThrow(() -> new RuntimeException("USER role not found. Please ensure roles are initialized."));
 
         Account newAccount = new Account();
         newAccount.setEmail(email);

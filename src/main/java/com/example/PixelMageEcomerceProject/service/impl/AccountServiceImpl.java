@@ -77,7 +77,7 @@ public class AccountServiceImpl implements AccountService {
 
         // Update fields
         existingAccount.setEmail(account.getEmail());
-        existingAccount.setPassword(account.getPassword());
+        existingAccount.setPassword(authenticationService.encodePassword(account.getPassword()));
         existingAccount.setName(account.getName());
         existingAccount.setPhoneNumber(account.getPhoneNumber());
 
@@ -123,15 +123,16 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public Map<String, Object> loginAccount(LoginRequestDTO loginRequestDTO) {
-        Account accountOpt = accountRepository.findByEmail(loginRequestDTO.getEmail()).orElseThrow(null);
+        Account account = accountRepository.findByEmail(loginRequestDTO.getEmail()).orElseThrow(
+                () -> new BadCredentialsException("Invalid email or password"));
 
-        if (!passwordEncoder.matches(loginRequestDTO.getPassword(), accountOpt.getPassword())) {
+        if (!passwordEncoder.matches(loginRequestDTO.getPassword(), account.getPassword())) {
             throw new BadCredentialsException("Invalid email or password");
         }
-        String token = authenticationService.generateToken(accountOpt);
+        String token = authenticationService.generateToken(account);
 
         return Map.of(
                 "accessToken", token,
-                "account", accountOpt);
+                "account", account);
     }
 }

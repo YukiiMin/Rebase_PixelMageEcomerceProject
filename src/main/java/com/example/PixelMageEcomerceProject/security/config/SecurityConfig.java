@@ -61,12 +61,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints - no authentication required
                         .requestMatchers(
-                                "/api/auth/**",
-                                "/api/accounts/login",
-                                "/api/accounts/registration",
+                                "/api/accounts/auth/**",
+                                "/api/accounts/auth/google",
                                 "/error",            // <--- QUAN TRỌNG: Phải public endpoint lỗi mặc định của Spring
-                                "/oauth2/**",
-                                "/login/oauth2/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",

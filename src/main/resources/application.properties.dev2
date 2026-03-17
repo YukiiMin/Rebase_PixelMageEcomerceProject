@@ -8,10 +8,13 @@ spring.datasource.url=jdbc:postgresql://localhost:5432/ExeProject
 spring.datasource.username=${DB_USERNAME:postgres}
 spring.datasource.password=${DB_PASSWORD:PixelMage@2026}
 
-spring.data.redis.host=localhost
-spring.data.redis.port=6379
+spring.data.redis.host=${REDISHOST:redis.railway.internal}
+spring.data.redis.port=${REDISPORT:6379}
+spring.data.redis.username=${REDISUSER:default}
+spring.data.redis.password=${REDISPASSWORD:ZxjuDPeKnqGCvRSbTLCcePVjCBUNWNtO}
 spring.data.redis.timeout=2000ms
 spring.cache.type=redis
+spring.data.redis.url=redis://default:ZxjuDPeKnqGCvRSbTLCcePVjCBUNWNtO@junction.proxy.rlwy.net:56300
 
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 spring.jpa.hibernate.ddl-auto=none
@@ -27,8 +30,6 @@ spring.config.import=optional:file:.env
 jwt.secret=${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
 jwt.expiration=86400000
 
-app.frontend.url=${FRONTEND_URL}
-
 # Google OAuth2 Configuration
 # Keys are loaded from .env file (see DotEvnConfig class)
 # Setup: Create OAuth2 credentials at https://console.cloud.google.com
@@ -36,14 +37,13 @@ app.frontend.url=${FRONTEND_URL}
 spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID}
 spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET}
 spring.security.oauth2.client.registration.google.scope=openid,profile,email
-
-spring.security.oauth2.client.registration.google.redirect-uri=${BACKEND_URL}/login/oauth2/code/google
+spring.security.oauth2.client.registration.google.redirect-uri=http://localhost:8386/login/oauth2/code/google
 spring.security.oauth2.client.registration.google.client-name=Google
+
 spring.security.oauth2.client.provider.google.authorization-uri=https://accounts.google.com/o/oauth2/auth
 spring.security.oauth2.client.provider.google.token-uri=https://oauth2.googleapis.com/token
 spring.security.oauth2.client.provider.google.user-info-uri=https://www.googleapis.com/oauth2/v2/userinfo
-spring.security.oauth2.client.provider.google.user-name-attribute=sub
-
+spring.security.oauth2.client.provider.google.user-name-attribute=id
 
 # SpringDoc OpenAPI (Swagger) Configuration
 springdoc.api-docs.path=/api-docs
@@ -69,4 +69,4 @@ stripe.api.secret-key=${STRIPE_SECRET_KEY}
 vnpay.tmn-code=${VNPAY_TMN_CODE:8O227D60}
 vnpay.hash-secret=${VNPAY_HASH_SECRET:QEYOYJFYKYOWOAXCQQBWWDBOKVQQZQQI}
 vnpay.url=${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
-vnpay.return-url=${VNPAY_RETURN_URL:http://localhost:8080/api/vnpay/payment-return}
+vnpay.return-url=${VNPAY_RETURN_URL:http://localhost:8386/api/vnpay/payment-return}
