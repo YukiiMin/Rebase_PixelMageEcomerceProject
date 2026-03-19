@@ -43,7 +43,7 @@ public class Pack {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private PackStatus status = PackStatus.CREATED;
+    private PackStatus status = PackStatus.STOCKED;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_account_id")

@@ -21,12 +21,17 @@ import com.example.PixelMageEcomerceProject.repository.PackDetailRepository;
 import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.repository.ProductRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.PackService;
+import com.example.PixelMageEcomerceProject.enums.CardTemplateRarity;
+import com.example.PixelMageEcomerceProject.exceptions.InsufficientCardsException;
+import java.security.SecureRandom;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class PackServiceImpl implements PackService {
 
     private final PackRepository packRepository;
@@ -35,9 +40,19 @@ public class PackServiceImpl implements PackService {
     private final AccountRepository accountRepository;
     private final CardRepository cardRepository;
 
-    private static final int CARDS_PER_PACK = 3;
+    private static final int CARDS_PER_PACK = 5;
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    private static final CardTemplateRarity[] SLOT_RARITY = {
+        CardTemplateRarity.COMMON,   // Slot 1 — guaranteed
+        CardTemplateRarity.COMMON,   // Slot 2 — guaranteed
+        CardTemplateRarity.COMMON,   // Slot 3 — guaranteed
+        null,                        // Slot 4 — roll: 70% COMMON / 30% RARE
+        null                         // Slot 5 — roll: 80% RARE  / 20% LEGENDARY
+    };
 
     @Override
+    @Transactional
     public Pack createPack(PackRequestDTO requestDTO) {
         Product product = productRepository.findById(requestDTO.getProductId())
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + requestDTO.getProductId()));
@@ -52,46 +67,63 @@ public class PackServiceImpl implements PackService {
         // 1. Create Pack entity
         Pack pack = new Pack();
         pack.setProduct(product);
-        pack.setStatus(PackStatus.CREATED);
+        pack.setStatus(PackStatus.STOCKED);
         pack.setCreatedBy(createdBy);
         pack = packRepository.save(pack);
 
-        // 2. Perform RNG to select physical cards (Must be READY)
-        List<Card> readyCards = cardRepository.findByStatus(CardProductStatus.READY);
-        if (readyCards.size() < CARDS_PER_PACK) {
-            throw new RuntimeException(
-                    "Not enough physical cards in READY status to form a pack. Found: " + readyCards.size());
-        }
-
-        // Shuffle existing cards and pick CARDS_PER_PACK
-        java.util.Collections.shuffle(readyCards);
-        List<Card> selectedCards = readyCards.subList(0, CARDS_PER_PACK);
-
         List<PackDetail> packDetails = new ArrayList<>();
 
-        for (int i = 0; i < CARDS_PER_PACK; i++) {
-            Card card = selectedCards.get(i);
+        for (int slot = 0; slot < CARDS_PER_PACK; slot++) {
+            CardTemplateRarity targetRarity = resolveSlotRarity(slot);
+            Card selected = drawCardByRarity(targetRarity);
 
-            // Update card status -> SOLD (reserved for pack)
-            card.setStatus(CardProductStatus.SOLD);
-            cardRepository.save(card);
-
+            // Card stays READY - status unchanged here
             // 3. Create Pack Detail linking Pack -> Card
             PackDetail detail = new PackDetail();
             detail.setPack(pack);
-            detail.setCard(card);
-            detail.setPositionIndex(i + 1);
+            detail.setCard(selected);
+            detail.setPositionIndex(slot + 1);
             packDetails.add(detail);
         }
 
         packDetailRepository.saveAll(packDetails);
         pack.setPackDetails(packDetails);
+        return packRepository.save(pack);
+    }
 
-        // 4. Update Pack status -> STOCKED
-        pack.setStatus(PackStatus.STOCKED);
-        pack = packRepository.save(pack);
+    private CardTemplateRarity resolveSlotRarity(int slotIndex) {
+        if (SLOT_RARITY[slotIndex] != null) return SLOT_RARITY[slotIndex];
 
-        return pack;
+        double roll = secureRandom.nextDouble();
+        if (slotIndex == 3) {  // Slot 4: 70/30
+            return roll < 0.30 ? CardTemplateRarity.RARE : CardTemplateRarity.COMMON;
+        } else {               // Slot 5: 80/20
+            return roll < 0.20 ? CardTemplateRarity.LEGENDARY : CardTemplateRarity.RARE;
+        }
+    }
+
+    private Card drawCardByRarity(CardTemplateRarity rarity) {
+        List<Card> pool = cardRepository
+            .findByCardTemplate_RarityAndStatus(rarity, CardProductStatus.READY);
+
+        if (pool.isEmpty()) {
+            // Fallback chain: LEGENDARY → RARE → COMMON → throw
+            if (rarity == CardTemplateRarity.LEGENDARY) {
+                log.warn("LEGENDARY pool exhausted — falling back to RARE");
+                pool = cardRepository.findByCardTemplate_RarityAndStatus(
+                    CardTemplateRarity.RARE, CardProductStatus.READY);
+            }
+            if (pool.isEmpty() && rarity != CardTemplateRarity.COMMON) {
+                log.warn("RARE pool exhausted — falling back to COMMON");
+                pool = cardRepository.findByCardTemplate_RarityAndStatus(
+                    CardTemplateRarity.COMMON, CardProductStatus.READY);
+            }
+            if (pool.isEmpty()) {
+                throw new InsufficientCardsException(
+                    "Không đủ thẻ READY trong kho để tạo Pack. Vui lòng bổ sung thẻ.");
+            }
+        }
+        return pool.get(secureRandom.nextInt(pool.size()));
     }
 
     @Override

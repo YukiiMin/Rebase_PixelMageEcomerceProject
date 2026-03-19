@@ -128,6 +128,9 @@ public class Account implements UserDetails {
         return true;
     }
 
+    @Column(name = "guest_reading_used_at")
+    private LocalDateTime guestReadingUsedAt;
+
     @Override
     public boolean isEnabled() {
         // Account phải active VÀ đã verify email mới được dùng
