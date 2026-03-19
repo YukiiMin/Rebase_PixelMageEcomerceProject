@@ -20,6 +20,9 @@ import com.example.PixelMageEcomerceProject.entity.CardCollection;
 import com.example.PixelMageEcomerceProject.entity.CardTemplate;
 import com.example.PixelMageEcomerceProject.entity.CollectionItem;
 import com.example.PixelMageEcomerceProject.entity.Order;
+import com.example.PixelMageEcomerceProject.enums.CollectionType;
+import com.example.PixelMageEcomerceProject.enums.OrderStatus;
+import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.CardCollectionRepository;
 import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
@@ -116,7 +119,7 @@ public class CollectionServiceImpl implements CollectionService {
         collection.setCollectionName(request.getCollectionName());
         collection.setDescription(request.getDescription());
         collection.setCollectionType(
-                request.getCollectionType() != null ? request.getCollectionType() : "STANDARD");
+                request.getCollectionType() != null ? request.getCollectionType() : CollectionType.STANDARD);
         collection.setStartTime(request.getStartTime());
         collection.setEndTime(request.getEndTime());
         collection.setRewardType(request.getRewardType());
@@ -220,7 +223,7 @@ public class CollectionServiceImpl implements CollectionService {
     public List<Card> getOwnedCards(Integer customerId) {
         List<Order> completedOrders = orderRepository.findByAccountCustomerId(customerId)
                 .stream()
-                .filter(order -> "COMPLETED".equals(order.getStatus()) && "PAID".equals(order.getPaymentStatus()))
+                .filter(order -> OrderStatus.COMPLETED.equals(order.getStatus()) && PaymentStatus.SUCCEEDED.equals(order.getPaymentStatus()))
                 .collect(Collectors.toList());
 
         return completedOrders.stream()
@@ -238,7 +241,7 @@ public class CollectionServiceImpl implements CollectionService {
     public boolean isCardOwnedByCustomer(Integer customerId, Integer cardId) {
         return orderRepository.findByAccountCustomerId(customerId)
                 .stream()
-                .filter(order -> "COMPLETED".equals(order.getStatus()) && "PAID".equals(order.getPaymentStatus()))
+                .filter(order -> OrderStatus.COMPLETED.equals(order.getStatus()) && PaymentStatus.SUCCEEDED.equals(order.getPaymentStatus()))
                 .flatMap(order -> order.getOrderItems().stream())
                 .flatMap(orderItem -> orderItem.getPack().getPackDetails().stream())
                 .anyMatch(packDetail -> packDetail.getCard().getCardId().equals(cardId));

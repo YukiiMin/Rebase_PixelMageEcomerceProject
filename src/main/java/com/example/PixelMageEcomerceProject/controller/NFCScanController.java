@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -51,7 +52,8 @@ public class NFCScanController {
     }
 
     @PostMapping("/unlink")
-    @Operation(summary = "Unlink NFC card", description = "Unlink an NFC card from your account")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    @Operation(summary = "Unlink NFC card", description = "Unlink an NFC card from a user account. STAFF or ADMIN role required.")
     public ResponseEntity<ResponseBase<Map<String, Object>>> unlinkCard(@RequestParam String nfcUid,
             @RequestParam Integer userId) {
         try {

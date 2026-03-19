@@ -20,6 +20,8 @@ import com.example.PixelMageEcomerceProject.entity.DivineHelper;
 import com.example.PixelMageEcomerceProject.entity.ReadingCard;
 import com.example.PixelMageEcomerceProject.entity.ReadingSession;
 import com.example.PixelMageEcomerceProject.entity.Spread;
+import com.example.PixelMageEcomerceProject.enums.ReadingSessionMode;
+import com.example.PixelMageEcomerceProject.enums.ReadingSessionStatus;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.DivineHelperRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingCardRepository;
@@ -27,7 +29,10 @@ import com.example.PixelMageEcomerceProject.repository.ReadingSessionRepository;
 import com.example.PixelMageEcomerceProject.repository.SpreadRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.CardTemplateService;
 import com.example.PixelMageEcomerceProject.service.interfaces.TarotReadingService;
+import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
+import com.example.PixelMageEcomerceProject.exceptions.InsufficientCardsException;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TarotReadingServiceImpl implements TarotReadingService {
@@ -49,6 +54,9 @@ public class TarotReadingServiceImpl implements TarotReadingService {
 
     @Autowired
     private CardTemplateService cardTemplateService;
+
+    @Autowired
+    private UserInventoryService userInventoryService;
 
     @Value("${OPENAI_API_KEY:}")
     private String openAiApiKey;
@@ -75,11 +83,19 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
+        if ("YOUR_DECK".equals(mode)) {
+            int userCount = userInventoryService.getLinkedCardCount(accountId);
+            if (userCount < spread.getMinCardsRequired()) {
+                throw new InsufficientCardsException(
+                        "Cần ít nhất " + spread.getMinCardsRequired() + " lá. Bạn đang có " + userCount);
+            }
+        }
+
         ReadingSession session = new ReadingSession();
         session.setAccount(account);
         session.setSpread(spread);
-        session.setMode(mode == null ? "EXPLORE" : mode);
-        session.setStatus("PENDING");
+        session.setMode(mode == null ? ReadingSessionMode.EXPLORE : ReadingSessionMode.valueOf(mode));
+        session.setStatus(ReadingSessionStatus.PENDING);
         ReadingSession savedSession = sessionRepository.save(session);
 
         Map<String, Object> response = new HashMap<>();
@@ -90,21 +106,30 @@ public class TarotReadingServiceImpl implements TarotReadingService {
     }
 
     @Override
+    @Transactional
     public Map<String, Object> drawCards(Integer sessionId, boolean allowReversed) {
         ReadingSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
-        if (!"PENDING".equals(session.getStatus())) {
+        if (!"PENDING".equals(session.getStatus().toString())) {
             throw new RuntimeException("Session is already completed or processing. Redraw is not allowed.");
         }
 
         Spread spread = session.getSpread();
         int cardsToDraw = spread.getPositionCount();
 
-        // Dùng cached card pool thay vì gọi repo trực tiếp (tránh DB query mỗi request)
-        List<CardTemplate> allCards = cardTemplateService.getAllCardTemplates();
-        if (allCards.size() < cardsToDraw) {
-            throw new RuntimeException("Not enough cards in database to draw.");
+        List<CardTemplate> allCards;
+        if ("YOUR_DECK".equals(session.getMode().toString())) {
+            allCards = userInventoryService.getLinkedCardTemplates(session.getAccount().getCustomerId());
+            if (allCards.size() < cardsToDraw) {
+                throw new InsufficientCardsException(
+                        "YOUR_DECK: cần " + cardsToDraw + " lá, user chỉ có " + allCards.size());
+            }
+        } else {
+            allCards = cardTemplateService.getAllCardTemplates();
+            if (allCards.size() < cardsToDraw) {
+                throw new RuntimeException("Not enough cards in database to draw.");
+            }
         }
 
         // 1. SecureRandom Shuffle
@@ -140,7 +165,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
             drawnCardsOutput.add(cardMap);
         }
 
-        session.setStatus("CARDS_DRAWN");
+        session.setStatus(ReadingSessionStatus.INTERPRETING);
         sessionRepository.save(session);
 
         Map<String, Object> response = new HashMap<>();
@@ -195,7 +220,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         }
 
         session.setAiInterpretation(interpretation);
-        session.setStatus("COMPLETED");
+        session.setStatus(ReadingSessionStatus.COMPLETED);
         sessionRepository.save(session);
 
         Map<String, Object> response = new HashMap<>();

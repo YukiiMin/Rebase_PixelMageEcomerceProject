@@ -23,7 +23,7 @@ public class ReadingCard {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", nullable = false)
-    @JsonBackReference("readingSession-readingCards")
+    @JsonBackReference("readingSession-readingCards") 
     private ReadingSession readingSession;
 
     @ManyToOne(fetch = FetchType.EAGER) // Need to fetch template info immediately

@@ -7,10 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.example.PixelMageEcomerceProject.entity.Card;
+import com.example.PixelMageEcomerceProject.enums.CardProductStatus;
 
 @Repository
 public interface CardRepository extends JpaRepository<Card, Integer> {
     Optional<Card> findByNfcUid(String nfcUid);
 
-    List<Card> findByStatus(String status);
+    List<Card> findByStatus(CardProductStatus status);
 }

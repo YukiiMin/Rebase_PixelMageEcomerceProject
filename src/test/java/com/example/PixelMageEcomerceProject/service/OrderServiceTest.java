@@ -3,6 +3,7 @@ package com.example.PixelMageEcomerceProject.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -24,12 +25,14 @@ import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.OrderItem;
 import com.example.PixelMageEcomerceProject.entity.Pack;
+import com.example.PixelMageEcomerceProject.enums.PackStatus;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderItemRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
 import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.service.impl.OrderServiceImpl;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
+import com.example.PixelMageEcomerceProject.service.interfaces.RedisLockService;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -44,6 +47,8 @@ class OrderServiceTest {
     private OrderItemRepository orderItemRepository;
     @Mock
     private PaymentService paymentService;
+    @Mock
+    private RedisLockService redisLockService;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -67,14 +72,15 @@ class OrderServiceTest {
 
         Pack pack = new Pack();
         pack.setPackId(5);
-        pack.setStatus("STOCKED");
+        pack.setStatus(PackStatus.STOCKED);
         when(packRepository.findById(5)).thenReturn(Optional.of(pack));
+        when(redisLockService.tryLock(any(), anyLong())).thenReturn(true);
 
         Order result = orderService.createOrder(req);
 
         assertThat(result).isNotNull();
         assertThat(result.getOrderItems()).hasSize(1);
-        assertThat(pack.getStatus()).isEqualTo("RESERVED");
+        assertThat(pack.getStatus()).isEqualTo(PackStatus.RESERVED);
         verify(packRepository, times(1)).save(pack);
         verify(orderItemRepository, times(1)).save(any(OrderItem.class));
     }
@@ -99,12 +105,13 @@ class OrderServiceTest {
         req.setOrderItems(List.of(itemReq));
 
         when(accountRepository.findById(10)).thenReturn(Optional.of(new Account()));
-        when(orderRepository.save(any(Order.class))).thenReturn(new Order());
+        // when(orderRepository.save(any(Order.class))).thenReturn(new Order()); // Will throw before saving
 
         Pack pack = new Pack();
         pack.setPackId(5);
-        pack.setStatus("RESERVED"); // Not STOCKED
+        pack.setStatus(PackStatus.RESERVED); // Not STOCKED
         when(packRepository.findById(5)).thenReturn(Optional.of(pack));
+        when(redisLockService.tryLock(any(), anyLong())).thenReturn(true);
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> orderService.createOrder(req));
         assertThat(ex.getMessage()).contains("Pack is not STOCKED anymore");

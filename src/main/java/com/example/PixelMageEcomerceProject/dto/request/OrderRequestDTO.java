@@ -8,17 +8,20 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.PixelMageEcomerceProject.enums.OrderStatus;
+import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderRequestDTO {
     private Integer customerId;
     private LocalDateTime orderDate;
-    private String status; // PENDING, PROCESSING, COMPLETED, CANCELLED
+    private OrderStatus status;
     private BigDecimal totalAmount;
     private String shippingAddress;
     private String paymentMethod;
-    private String paymentStatus; // PENDING, PAID, FAILED, REFUNDED
+    private PaymentStatus paymentStatus;
     private String notes;
     private List<OrderItemRequestDTO> orderItems;
 }

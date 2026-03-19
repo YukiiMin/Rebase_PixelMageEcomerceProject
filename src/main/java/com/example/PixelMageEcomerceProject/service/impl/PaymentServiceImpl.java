@@ -5,6 +5,9 @@ import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.entity.Payment;
+import com.example.PixelMageEcomerceProject.enums.OrderStatus;
+import com.example.PixelMageEcomerceProject.enums.PackStatus;
+import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.example.PixelMageEcomerceProject.exceptions.PaymentNotFoundException;
 import com.example.PixelMageEcomerceProject.exceptions.PaymentProcessingException;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
@@ -54,12 +57,12 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> PaymentNotFoundException.forOrderId(orderId));
-            
+
             String customerId = getOrCreateStripeCustomerId(order.getAccount().getCustomerId());
-            
+
             // Convert amount to cents (Stripe requires smallest currency unit)
             Long amountInCents = amount.multiply(new BigDecimal("100")).longValue();
-            
+
             PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                     .setAmount(amountInCents)
                     .setCurrency(currency.toLowerCase())
@@ -74,13 +77,13 @@ public class PaymentServiceImpl implements PaymentService {
                     .build();
 
             PaymentIntent paymentIntent = PaymentIntent.create(params);
-            
+
             // Save initial payment record
             savePaymentRecordFromIntent(order, paymentIntent, false);
-            
+
             log.info("Created payment intent: {} for order: {}", paymentIntent.getId(), orderId);
             return paymentIntent;
-            
+
         } catch (StripeException e) {
             log.error("Error creating payment intent for order {}: {}", orderId, e.getMessage());
             throw new PaymentProcessingException("Failed to create payment intent: " + e.getMessage(), e);
@@ -91,7 +94,7 @@ public class PaymentServiceImpl implements PaymentService {
     public SetupIntent createSetupIntent(Integer customerId) {
         try {
             String stripeCustomerId = getOrCreateStripeCustomerId(customerId);
-            
+
             SetupIntentCreateParams params = SetupIntentCreateParams.builder()
                     .setCustomer(stripeCustomerId)
                     .putMetadata("customer_id", customerId.toString())
@@ -104,10 +107,10 @@ public class PaymentServiceImpl implements PaymentService {
                     .build();
 
             SetupIntent setupIntent = SetupIntent.create(params);
-            
+
             log.info("Created setup intent: {} for customer: {}", setupIntent.getId(), customerId);
             return setupIntent;
-            
+
         } catch (StripeException e) {
             log.error("Error creating setup intent for customer {}: {}", customerId, e.getMessage());
             throw new RuntimeException("Failed to create setup intent: " + e.getMessage());
@@ -119,12 +122,12 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
-            
+
             String customerId = getOrCreateStripeCustomerId(order.getAccount().getCustomerId());
-            
+
             // Convert amount to cents
             Long amountInCents = order.getTotalAmount().multiply(new BigDecimal("100")).longValue();
-            
+
             PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                     .setAmount(amountInCents)
                     .setCurrency("usd") // Default to USD - can be made configurable
@@ -137,13 +140,13 @@ public class PaymentServiceImpl implements PaymentService {
                     .build();
 
             PaymentIntent paymentIntent = PaymentIntent.create(params);
-            
+
             // Save payment record
             savePaymentRecordFromIntent(order, paymentIntent, true);
-            
+
             log.info("Confirmed payment with saved card: {} for order: {}", paymentIntent.getId(), orderId);
             return paymentIntent;
-            
+
         } catch (StripeException e) {
             log.error("Error confirming payment with saved card for order {}: {}", orderId, e.getMessage());
             throw new RuntimeException("Failed to confirm payment with saved card: " + e.getMessage());
@@ -156,28 +159,28 @@ public class PaymentServiceImpl implements PaymentService {
             PaymentIntent paymentIntent = PaymentIntent.retrieve(stripePaymentIntentId);
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
-            
-            // Check if payment record already exists
-            Optional<Payment> existingPayment = paymentRepository.findByOrder_OrderId(orderId);
+
+            // Check if payment record already exists using the provider's intent ID
+            Optional<Payment> existingPayment = paymentRepository.findByStripePaymentIntentId(stripePaymentIntentId);
             Payment payment = existingPayment.orElse(new Payment());
-            
+
             payment.setOrder(order);
             payment.setStripePaymentIntentId(stripePaymentIntentId);
             payment.setStripeCustomerId(paymentIntent.getCustomer());
             payment.setAmount(new BigDecimal(paymentIntent.getAmount()).divide(new BigDecimal("100")));
             payment.setCurrency(paymentIntent.getCurrency().toUpperCase());
-            payment.setPaymentStatus(paymentIntent.getStatus().toUpperCase());
+            payment.setPaymentStatus(PaymentStatus.valueOf(paymentIntent.getStatus().toUpperCase()));
             payment.setClientSecret(paymentIntent.getClientSecret());
-            
+
             if (paymentIntent.getPaymentMethod() != null) {
                 payment.setStripePaymentMethodId(paymentIntent.getPaymentMethod());
             }
-            
+
             if ("succeeded".equals(paymentIntent.getStatus())) {
                 payment.setProcessedAt(LocalDateTime.now());
                 payment.setNetAmount(payment.getAmount().subtract(calculateProcessingFee(payment.getAmount())));
 
-                order.setPaymentStatus("PAID");
+                order.setPaymentStatus(PaymentStatus.SUCCEEDED);
                 updateOrderAndPacksOnPaymentSuccess(order);
 
                 // Idempotency: mark webhook event as processed (24h TTL)
@@ -195,7 +198,7 @@ public class PaymentServiceImpl implements PaymentService {
             }
 
             return paymentRepository.save(payment);
-            
+
         } catch (StripeException e) {
             log.error("Error saving payment record for order {}: {}", orderId, e.getMessage());
             throw new RuntimeException("Failed to save payment record: " + e.getMessage());
@@ -206,18 +209,18 @@ public class PaymentServiceImpl implements PaymentService {
     public Payment updatePaymentStatus(Integer paymentId, String status, String failureReason) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> PaymentNotFoundException.forPaymentId(paymentId));
-        
-        payment.setPaymentStatus(status);
+
+        payment.setPaymentStatus(PaymentStatus.valueOf(status));
         if (failureReason != null) {
             payment.setFailureReason(failureReason);
         }
-        
-        if ("SUCCEEDED".equals(status)) {
+
+        if (PaymentStatus.SUCCEEDED.equals(payment.getPaymentStatus())) {
             payment.setProcessedAt(LocalDateTime.now());
             payment.setNetAmount(payment.getAmount().subtract(calculateProcessingFee(payment.getAmount())));
 
             Order order = payment.getOrder();
-            order.setPaymentStatus("PAID");
+            order.setPaymentStatus(PaymentStatus.SUCCEEDED);
             updateOrderAndPacksOnPaymentSuccess(order);
 
             // Push PAYMENT_CONFIRMED via WebSocket
@@ -231,7 +234,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public Optional<Payment> getPaymentByOrderId(Integer orderId) {
+    public List<Payment> getPaymentByOrderId(Integer orderId) {
         return paymentRepository.findByOrder_OrderId(orderId);
     }
 
@@ -244,17 +247,17 @@ public class PaymentServiceImpl implements PaymentService {
     public List<PaymentMethod> getSavedPaymentMethods(Integer customerId) {
         try {
             String stripeCustomerId = getOrCreateStripeCustomerId(customerId);
-            
+
             PaymentMethodListParams params = PaymentMethodListParams.builder()
                     .setCustomer(stripeCustomerId)
                     .setType(PaymentMethodListParams.Type.CARD)
                     .build();
 
             PaymentMethodCollection paymentMethods = PaymentMethod.list(params);
-            
+
             log.info("Retrieved {} saved payment methods for customer: {}", paymentMethods.getData().size(), customerId);
             return paymentMethods.getData();
-            
+
         } catch (StripeException e) {
             log.error("Error retrieving saved payment methods for customer {}: {}", customerId, e.getMessage());
             throw new RuntimeException("Failed to retrieve saved payment methods: " + e.getMessage());
@@ -271,13 +274,13 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             Account account = accountRepository.findById(customerId)
                     .orElseThrow(() -> new RuntimeException("Account not found with id: " + customerId));
-            
+
             // Check if customer already has a Stripe customer ID
             List<Payment> existingPayments = paymentRepository.findByCustomerId(customerId);
             if (!existingPayments.isEmpty() && existingPayments.get(0).getStripeCustomerId() != null) {
                 return existingPayments.get(0).getStripeCustomerId();
             }
-            
+
             // Create new Stripe customer
             CustomerCreateParams params = CustomerCreateParams.builder()
                     .setEmail(account.getEmail())
@@ -286,10 +289,10 @@ public class PaymentServiceImpl implements PaymentService {
                     .build();
 
             Customer customer = Customer.create(params);
-            
+
             log.info("Created Stripe customer: {} for account: {}", customer.getId(), customerId);
             return customer.getId();
-            
+
         } catch (StripeException e) {
             log.error("Error creating Stripe customer for account {}: {}", customerId, e.getMessage());
             throw new RuntimeException("Failed to create Stripe customer: " + e.getMessage());
@@ -301,9 +304,9 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentMethodId);
             paymentMethod.detach();
-            
+
             log.info("Detached payment method: {}", paymentMethodId);
-            
+
         } catch (StripeException e) {
             log.error("Error detaching payment method {}: {}", paymentMethodId, e.getMessage());
             throw new RuntimeException("Failed to detach payment method: " + e.getMessage());
@@ -321,14 +324,14 @@ public class PaymentServiceImpl implements PaymentService {
     private void updateOrderAndPacksOnPaymentSuccess(Order order) {
         if (order.getOrderItems() != null) {
             order.getOrderItems().forEach(item -> {
-                if (item.getPack() != null && "RESERVED".equals(item.getPack().getStatus())) {
+                if (item.getPack() != null && PackStatus.RESERVED.equals(item.getPack().getStatus())) {
                     Pack pack = item.getPack();
-                    pack.setStatus("SOLD");
+                    pack.setStatus(PackStatus.SOLD);
                     packRepository.save(pack);
                 }
             });
         }
-        order.setStatus("COMPLETED");
+        order.setStatus(OrderStatus.COMPLETED);
         orderRepository.save(order);
     }
 
@@ -339,14 +342,14 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setStripeCustomerId(paymentIntent.getCustomer());
         payment.setAmount(new BigDecimal(paymentIntent.getAmount()).divide(new BigDecimal("100")));
         payment.setCurrency(paymentIntent.getCurrency().toUpperCase());
-        payment.setPaymentStatus(paymentIntent.getStatus().toUpperCase());
+        payment.setPaymentStatus(PaymentStatus.valueOf(paymentIntent.getStatus().toUpperCase()));
         payment.setClientSecret(paymentIntent.getClientSecret());
         payment.setIsSavedPaymentMethod(isSavedPaymentMethod);
-        
+
         if (paymentIntent.getPaymentMethod() != null) {
             payment.setStripePaymentMethodId(paymentIntent.getPaymentMethod());
         }
-        
+
         return paymentRepository.save(payment);
     }
 }

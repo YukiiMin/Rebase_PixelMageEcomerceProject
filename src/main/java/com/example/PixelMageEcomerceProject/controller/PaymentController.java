@@ -224,14 +224,17 @@ public class PaymentController {
                         @ApiResponse(responseCode = "200", description = "Payment information retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Payment not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<PaymentResponseDTO>> getPaymentByOrderId(
+        public ResponseEntity<ResponseBase<List<PaymentResponseDTO>>> getPaymentByOrderId(
                         @Parameter(description = "Order ID") @PathVariable Integer orderId) {
                 try {
-                        Payment payment = paymentService.getPaymentByOrderId(orderId)
-                                        .orElseThrow(() -> new RuntimeException(
-                                                        "Payment not found for order: " + orderId));
+                        List<Payment> payments = paymentService.getPaymentByOrderId(orderId);
+                        if (payments.isEmpty()) {
+                            throw new RuntimeException("Payment not found for order: " + orderId);
+                        }
 
-                        PaymentResponseDTO responseData = convertToPaymentResponseDTO(payment);
+                        List<PaymentResponseDTO> responseData = payments.stream()
+                                    .map(this::convertToPaymentResponseDTO)
+                                    .collect(Collectors.toList());
 
                         return ResponseBase.ok(responseData, "Payment information retrieved successfully");
 
@@ -241,11 +244,12 @@ public class PaymentController {
         }
 
         private PaymentResponseDTO convertToPaymentResponseDTO(Payment payment) {
+                String paymentStatus = payment.getPaymentStatus() != null ? payment.getPaymentStatus().name() : null;
                 return new PaymentResponseDTO(
                                 payment.getPaymentId(),
                                 payment.getOrder().getOrderId(),
                                 payment.getStripePaymentIntentId(),
-                                payment.getPaymentStatus(),
+                                paymentStatus,
                                 payment.getAmount(),
                                 payment.getCurrency(),
                                 payment.getPaymentMethod(),

@@ -11,6 +11,8 @@ public interface SetStoryService {
 
     void checkAndUnlockStories(Integer userId);
 
+    void revokeStoriesIfConditionNotMet(Integer userId);
+
     List<SetStory> getAllStories();
 
     List<SetStory> getUnlockedStories(Integer userId);

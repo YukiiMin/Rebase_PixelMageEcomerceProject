@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.entity;
 
+import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -27,7 +28,7 @@ public class Payment {
     @Column(name = "payment_id")
     private Integer paymentId;
 
-    @OneToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "order_id", nullable = false, referencedColumnName = "order_id")
     @JsonBackReference("order-payment")
     private Order order;
@@ -47,8 +48,9 @@ public class Payment {
     @Column(name = "currency", nullable = false, length = 3)
     private String currency; // USD, VND, etc.
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 50)
-    private String paymentStatus; // PENDING, SUCCEEDED, FAILED, CANCELED, REQUIRES_ACTION
+    private PaymentStatus paymentStatus; // PENDING, SUCCEEDED, FAILED, CANCELED, REQUIRES_ACTION
 
     @Column(name = "payment_method", length = 50)
     private String paymentMethod; // CARD, BANK_TRANSFER, etc.

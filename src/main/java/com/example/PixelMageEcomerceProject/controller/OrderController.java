@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.PixelMageEcomerceProject.dto.request.OrderRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
 import com.example.PixelMageEcomerceProject.entity.Order;
+import com.example.PixelMageEcomerceProject.enums.OrderStatus;
 import com.example.PixelMageEcomerceProject.service.interfaces.OrderService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -89,7 +90,7 @@ public class OrderController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<Order>>> getOrdersByStatus(@PathVariable String status) {
+        public ResponseEntity<ResponseBase<List<Order>>> getOrdersByStatus(@PathVariable OrderStatus status) {
                 List<Order> orders = orderService.getOrdersByStatus(status);
                 return ResponseBase.ok(orders, "Orders retrieved successfully");
         }

@@ -43,5 +43,8 @@ public class UserStoryUnlock {
     @CreationTimestamp
     @Column(name = "unlocked_at", nullable = false, updatable = false)
     private LocalDateTime unlockedAt;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
 }
 

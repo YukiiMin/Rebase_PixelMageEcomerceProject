@@ -13,4 +13,8 @@ public interface UserInventoryRepository extends JpaRepository<UserInventory, In
     Optional<UserInventory> findByUser_CustomerIdAndCardTemplate_CardTemplateId(Integer userId, Integer cardTemplateId);
 
     List<UserInventory> findByUser_CustomerId(Integer userId);
+
+    List<UserInventory> findByUser_CustomerIdAndQuantityGreaterThan(Integer userId, int quantity);
+
+    int countByUser_CustomerIdAndQuantityGreaterThan(Integer userId, int quantity);
 }

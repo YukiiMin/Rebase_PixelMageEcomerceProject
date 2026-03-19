@@ -14,6 +14,7 @@ import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.entity.PackDetail;
 import com.example.PixelMageEcomerceProject.entity.Product;
 import com.example.PixelMageEcomerceProject.enums.CardProductStatus;
+import com.example.PixelMageEcomerceProject.enums.PackStatus;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.CardRepository;
 import com.example.PixelMageEcomerceProject.repository.PackDetailRepository;
@@ -51,12 +52,12 @@ public class PackServiceImpl implements PackService {
         // 1. Create Pack entity
         Pack pack = new Pack();
         pack.setProduct(product);
-        pack.setStatus("CREATED");
+        pack.setStatus(PackStatus.CREATED);
         pack.setCreatedBy(createdBy);
         pack = packRepository.save(pack);
 
         // 2. Perform RNG to select physical cards (Must be READY)
-        List<Card> readyCards = cardRepository.findByStatus(CardProductStatus.READY.name());
+        List<Card> readyCards = cardRepository.findByStatus(CardProductStatus.READY);
         if (readyCards.size() < CARDS_PER_PACK) {
             throw new RuntimeException(
                     "Not enough physical cards in READY status to form a pack. Found: " + readyCards.size());
@@ -72,7 +73,7 @@ public class PackServiceImpl implements PackService {
             Card card = selectedCards.get(i);
 
             // Update card status -> SOLD (reserved for pack)
-            card.setStatus(CardProductStatus.SOLD.name());
+            card.setStatus(CardProductStatus.SOLD);
             cardRepository.save(card);
 
             // 3. Create Pack Detail linking Pack -> Card
@@ -87,7 +88,7 @@ public class PackServiceImpl implements PackService {
         pack.setPackDetails(packDetails);
 
         // 4. Update Pack status -> STOCKED
-        pack.setStatus("STOCKED");
+        pack.setStatus(PackStatus.STOCKED);
         pack = packRepository.save(pack);
 
         return pack;
@@ -97,7 +98,7 @@ public class PackServiceImpl implements PackService {
     public Pack updatePackStatus(Integer packId, String status) {
         Pack pack = packRepository.findById(packId)
                 .orElseThrow(() -> new RuntimeException("Pack not found: " + packId));
-        pack.setStatus(status);
+        pack.setStatus(PackStatus.valueOf(status));
         return packRepository.save(pack);
     }
 

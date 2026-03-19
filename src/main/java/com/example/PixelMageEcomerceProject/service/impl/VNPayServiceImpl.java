@@ -21,6 +21,9 @@ import com.example.PixelMageEcomerceProject.config.VNPayConfig;
 import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.entity.Payment;
+import com.example.PixelMageEcomerceProject.enums.OrderStatus;
+import com.example.PixelMageEcomerceProject.enums.PackStatus;
+import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
 import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.repository.PaymentRepository;
@@ -137,20 +140,20 @@ public class VNPayServiceImpl implements VNPayService {
                     try {
                         Integer orderId = Integer.parseInt(parts[0]);
                         Order order = orderRepository.findById(orderId).orElse(null);
-                        if (order != null && "PENDING".equals(order.getPaymentStatus())) {
-                            order.setPaymentStatus("PAID");
-                            order.setStatus("PROCESSING");
+                        if (order != null && PaymentStatus.PENDING.equals(order.getPaymentStatus())) {
+                            order.setPaymentStatus(PaymentStatus.SUCCEEDED);
+                            order.setStatus(OrderStatus.PROCESSING);
 
                             if (order.getOrderItems() != null) {
                                 order.getOrderItems().forEach(item -> {
-                                    if (item.getPack() != null && "RESERVED".equals(item.getPack().getStatus())) {
+                                    if (item.getPack() != null && PackStatus.RESERVED.equals(item.getPack().getStatus())) {
                                         Pack pack = item.getPack();
-                                        pack.setStatus("SOLD");
+                                        pack.setStatus(PackStatus.SOLD);
                                         packRepository.save(pack);
                                     }
                                 });
                             }
-                            order.setStatus("COMPLETED");
+                            order.setStatus(OrderStatus.COMPLETED);
                             orderRepository.save(order);
 
                             // Save payment record
@@ -161,7 +164,7 @@ public class VNPayServiceImpl implements VNPayService {
                                     new BigDecimal(request.getParameter("vnp_Amount")).divide(new BigDecimal(100)));
                             payment.setCurrency("VND");
                             payment.setPaymentMethod("VNPAY");
-                            payment.setPaymentStatus("SUCCEEDED");
+                            payment.setPaymentStatus(PaymentStatus.SUCCEEDED);
                             paymentRepository.save(payment);
                         }
                     } catch (NumberFormatException e) {

@@ -34,9 +34,5 @@ public interface InventoryService {
      */
     List<Inventory> getAllInventories();
 
-    /**
-     * Get inventory by warehouse ID
-     */
-    List<Inventory> getInventoryByWarehouseId(Integer warehouseId);
 }
 

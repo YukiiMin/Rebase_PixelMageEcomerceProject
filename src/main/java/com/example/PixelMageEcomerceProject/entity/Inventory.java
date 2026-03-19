@@ -27,11 +27,6 @@ public class Inventory {
     @JsonBackReference("product-inventories")
     private Product product;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "warehouse_id", nullable = false, referencedColumnName = "warehouse_id")
-    @JsonBackReference("warehouse-inventories")
-    private Warehouse warehouse;
-
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 

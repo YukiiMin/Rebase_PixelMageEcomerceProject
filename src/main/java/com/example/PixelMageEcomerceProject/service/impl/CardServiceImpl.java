@@ -42,7 +42,7 @@ public class CardServiceImpl implements CardService {
         card.setCustomText(cardRequestDTO.getCustomText());
         card.setProductionBatch(cardRequestDTO.getProductionBatch());
         card.setCardCondition(cardRequestDTO.getCardCondition() != null ? cardRequestDTO.getCardCondition() : "NEW");
-        card.setStatus(CardProductStatus.PENDING_BIND.name());
+        card.setStatus(CardProductStatus.PENDING_BIND);
 
         return cardRepository.save(card);
     }
@@ -58,7 +58,7 @@ public class CardServiceImpl implements CardService {
         }
 
         card.setNfcUid(nfcUid);
-        card.setStatus(CardProductStatus.READY.name());
+        card.setStatus(CardProductStatus.READY);
         return cardRepository.save(card);
     }
 
@@ -66,7 +66,7 @@ public class CardServiceImpl implements CardService {
     public Card updateStatus(Integer cardId, String newStatus) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new RuntimeException("Card not found with id: " + cardId));
-        card.setStatus(newStatus);
+        card.setStatus(CardProductStatus.valueOf(newStatus.toUpperCase()));
         return cardRepository.save(card);
     }
 
@@ -107,7 +107,7 @@ public class CardServiceImpl implements CardService {
     public void deleteCard(Integer id) {
         Card card = cardRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Card not found with id: " + id));
-        card.setStatus(CardProductStatus.DEACTIVATED.name());
+        card.setStatus(CardProductStatus.DEACTIVATED);
         cardRepository.save(card);
     }
 

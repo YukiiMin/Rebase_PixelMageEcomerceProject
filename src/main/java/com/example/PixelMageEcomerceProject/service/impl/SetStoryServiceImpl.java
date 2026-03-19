@@ -54,9 +54,13 @@ public class SetStoryServiceImpl implements SetStoryService {
                 continue;
             }
 
-            boolean alreadyUnlocked = userStoryUnlockRepository
-                    .existsByUser_CustomerIdAndStory_StoryId(userId, story.getStoryId());
-            if (alreadyUnlocked) {
+            java.util.Optional<UserStoryUnlock> existingUnlock = userStoryUnlockRepository
+                    .findByUser_CustomerIdAndStory_StoryId(userId, story.getStoryId());
+            if (existingUnlock.isPresent()) {
+                if (!existingUnlock.get().getIsActive()) {
+                    existingUnlock.get().setIsActive(true);
+                    userStoryUnlockRepository.save(existingUnlock.get());
+                }
                 continue;
             }
 
@@ -68,7 +72,35 @@ public class SetStoryServiceImpl implements SetStoryService {
             UserStoryUnlock unlock = new UserStoryUnlock();
             unlock.setUser(user);
             unlock.setStory(story);
+            unlock.setIsActive(true);
             userStoryUnlockRepository.save(unlock);
+        }
+    }
+
+    @Override
+    public void revokeStoriesIfConditionNotMet(Integer userId) {
+        List<UserStoryUnlock> activeUnlocks = userStoryUnlockRepository.findByUser_CustomerIdAndIsActiveTrue(userId);
+        if (activeUnlocks.isEmpty()) {
+            return;
+        }
+
+        List<UserInventory> inventoryList = userInventoryRepository.findByUser_CustomerId(userId);
+        Set<Integer> ownedTemplateIds = new HashSet<>();
+        for (UserInventory inv : inventoryList) {
+            if (inv.getQuantity() != null && inv.getQuantity() > 0 && inv.getCardTemplate() != null) {
+                ownedTemplateIds.add(inv.getCardTemplate().getCardTemplateId());
+            }
+        }
+
+        for (UserStoryUnlock unlock : activeUnlocks) {
+            SetStory story = unlock.getStory();
+            List<Integer> requiredTemplateIds = parseTemplateIds(story.getRequiredTemplateIds());
+            
+            boolean hasAllRequired = ownedTemplateIds.containsAll(requiredTemplateIds);
+            if (!hasAllRequired) {
+                unlock.setIsActive(false);
+                userStoryUnlockRepository.save(unlock);
+            }
         }
     }
 
@@ -81,7 +113,7 @@ public class SetStoryServiceImpl implements SetStoryService {
     @Override
     @Transactional(readOnly = true)
     public List<SetStory> getUnlockedStories(Integer userId) {
-        List<UserStoryUnlock> unlocks = userStoryUnlockRepository.findByUser_CustomerId(userId);
+        List<UserStoryUnlock> unlocks = userStoryUnlockRepository.findByUser_CustomerIdAndIsActiveTrue(userId);
         List<SetStory> stories = new ArrayList<>();
         for (UserStoryUnlock unlock : unlocks) {
             stories.add(unlock.getStory());

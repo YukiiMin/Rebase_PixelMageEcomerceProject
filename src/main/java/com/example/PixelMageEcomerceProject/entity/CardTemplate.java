@@ -7,10 +7,19 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+
+import com.example.PixelMageEcomerceProject.enums.ArcanaType;
+import com.example.PixelMageEcomerceProject.enums.CardTemplateRarity;
+import com.example.PixelMageEcomerceProject.enums.Suit;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -28,7 +37,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "card_templates")
 @SQLRestriction("is_active = true")
-@com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -48,21 +57,24 @@ public class CardTemplate {
     @Column(name = "design_path", length = 255)
     private String designPath;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "arcana_type", length = 50)
-    private String arcanaType; // Major, Minor
+    private ArcanaType arcanaType; // MAJOR, MINOR
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "suit", length = 50)
-    private String suit; // Wands, Cups, Swords, Pentacles
+    private Suit suit; // WANDS, CUPS, SWORDS, PENTACLES
 
     @Column(name = "card_number")
     private Integer cardNumber;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "rarity", length = 50)
-    private String rarity;
+    private CardTemplateRarity rarity;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "framework_id")
-    @com.fasterxml.jackson.annotation.JsonBackReference("framework-cardTemplates")
+    @JsonBackReference("framework-cardTemplates")
     private CardFramework cardFramework;
 
     @Column(name = "is_active", nullable = false)
@@ -84,10 +96,6 @@ public class CardTemplate {
     @JsonManagedReference("cardTemplate-cards")
     private List<Card> cards;
 
-    // Relationship: CardTemplate 1-N CardPriceTier
-    @OneToMany(mappedBy = "cardTemplate", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference("cardTemplate-cardPriceTiers")
-    private List<CardPriceTier> cardPriceTiers;
 
     // Relationship: CardTemplate 1-1 DivineHelper
     @OneToOne(mappedBy = "cardTemplate", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

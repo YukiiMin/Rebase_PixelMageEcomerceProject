@@ -6,12 +6,16 @@ import java.util.List;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.example.PixelMageEcomerceProject.enums.ReadingSessionMode;
+import com.example.PixelMageEcomerceProject.enums.ReadingSessionStatus;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -51,11 +55,13 @@ public class ReadingSession {
     @Column(name = "main_question", columnDefinition = "VARCHAR(500)")
     private String mainQuestion;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "mode", length = 50)
-    private String mode; // EXPLORE or YOUR_DECK
+    private ReadingSessionMode mode; // EXPLORE or YOUR_DECK
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
-    private String status; // PENDING, INTERPRETING, COMPLETED
+    private ReadingSessionStatus status; // PENDING, INTERPRETING, COMPLETED
 
     @Column(name = "ai_interpretation", columnDefinition = "TEXT")
     private String aiInterpretation;

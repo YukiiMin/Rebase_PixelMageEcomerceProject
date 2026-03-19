@@ -42,7 +42,7 @@ public interface PaymentService {
     /**
      * Get payment by order ID.
      */
-    Optional<Payment> getPaymentByOrderId(Integer orderId);
+    List<Payment> getPaymentByOrderId(Integer orderId);
     
     /**
      * Get payment by payment intent ID.

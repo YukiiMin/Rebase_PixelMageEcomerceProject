@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class InventoryRequestDTO {
     private Integer productId;
-    private Integer warehouseId;
     private Integer quantity;
     private LocalDateTime lastChecked;
 }

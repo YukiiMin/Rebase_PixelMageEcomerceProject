@@ -77,16 +77,7 @@ public class InventoryController {
                                                 "Inventory not found with id: " + id));
         }
 
-        @GetMapping("/warehouse/{warehouseId}")
-        @Operation(summary = "Get inventory by warehouse", description = "Retrieve all inventory for a specific warehouse")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Successfully retrieved inventory", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<List<Inventory>>> getInventoryByWarehouseId(
-                        @PathVariable Integer warehouseId) {
-                List<Inventory> inventories = inventoryService.getInventoryByWarehouseId(warehouseId);
-                return ResponseBase.ok(inventories, "Inventory retrieved successfully");
-        }
+
 
         @PutMapping("/{id}")
         @Operation(summary = "Update inventory", description = "Update an existing inventory record")

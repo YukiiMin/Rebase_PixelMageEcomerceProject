@@ -17,10 +17,12 @@ import com.example.PixelMageEcomerceProject.service.interfaces.UserCollectionPro
 import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class UserInventoryServiceImpl implements UserInventoryService {
 
     private final UserInventoryRepository userInventoryRepository;
@@ -38,7 +40,12 @@ public class UserInventoryServiceImpl implements UserInventoryService {
         UserInventory savedInventory;
         if (existing.isPresent()) {
             UserInventory inventory = existing.get();
-            inventory.setQuantity(inventory.getQuantity() + quantityChange);
+            int newQty = inventory.getQuantity() + quantityChange;
+            if (newQty < 0) {
+                log.warn("Negative inventory prevented: userId={}, templateId={}", userId, cardTemplateId);
+                newQty = 0;
+            }
+            inventory.setQuantity(newQty);
             savedInventory = userInventoryRepository.save(inventory);
         } else {
             Account account = accountRepository.findById(userId)
@@ -56,7 +63,12 @@ public class UserInventoryServiceImpl implements UserInventoryService {
         }
 
         userCollectionProgressService.recalculateProgressForTemplate(userId, cardTemplateId);
-        setStoryService.checkAndUnlockStories(userId);
+        
+        if (quantityChange < 0) {
+            setStoryService.revokeStoriesIfConditionNotMet(userId);
+        } else {
+            setStoryService.checkAndUnlockStories(userId);
+        }
 
         return savedInventory;
     }
@@ -64,5 +76,18 @@ public class UserInventoryServiceImpl implements UserInventoryService {
     @Override
     public List<UserInventory> getUserInventory(Integer userId) {
         return userInventoryRepository.findByUser_CustomerId(userId);
+    }
+
+    @Override
+    public List<CardTemplate> getLinkedCardTemplates(Integer userId) {
+        return userInventoryRepository.findByUser_CustomerIdAndQuantityGreaterThan(userId, 0)
+                .stream()
+                .map(UserInventory::getCardTemplate)
+                .toList();
+    }
+
+    @Override
+    public int getLinkedCardCount(Integer userId) {
+        return userInventoryRepository.countByUser_CustomerIdAndQuantityGreaterThan(userId, 0);
     }
 }

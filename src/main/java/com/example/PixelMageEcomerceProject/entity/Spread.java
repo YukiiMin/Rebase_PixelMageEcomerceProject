@@ -41,8 +41,7 @@ public class Spread {
     private Integer positionCount;
 
     @Column(name = "min_cards_required")
-    @Builder.Default
-    private Integer minCardsRequired = 1;
+    private Integer minCardsRequired;
 
     @OneToMany(mappedBy = "spread", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference("spread-readingSessions")

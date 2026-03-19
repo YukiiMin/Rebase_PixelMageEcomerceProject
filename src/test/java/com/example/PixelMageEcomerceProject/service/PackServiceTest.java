@@ -25,6 +25,7 @@ import com.example.PixelMageEcomerceProject.entity.Card;
 import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.entity.Product;
 import com.example.PixelMageEcomerceProject.enums.CardProductStatus;
+import com.example.PixelMageEcomerceProject.enums.PackStatus;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.CardRepository;
 import com.example.PixelMageEcomerceProject.repository.PackDetailRepository;
@@ -74,17 +75,17 @@ class PackServiceTest {
         for (int i = 0; i < 3; i++) {
             Card c = new Card();
             c.setCardId(i);
-            c.setStatus(CardProductStatus.READY.name());
+            c.setStatus(CardProductStatus.READY);
             readyCards.add(c);
         }
-        when(cardRepository.findByStatus(CardProductStatus.READY.name())).thenReturn(readyCards);
+        when(cardRepository.findByStatus(CardProductStatus.READY)).thenReturn(readyCards);
 
         // Act
         Pack result = packService.createPack(requestDTO);
 
         // Assert
         assertThat(result).isNotNull();
-        assertThat(result.getStatus()).isEqualTo("STOCKED");
+        assertThat(result.getStatus()).isEqualTo(PackStatus.STOCKED);
         verify(cardRepository, times(3)).save(any(Card.class)); // 3 cards set to SOLD
         verify(packDetailRepository, times(1)).saveAll(anyList());
         verify(packRepository, times(2)).save(any(Pack.class)); // 1 for created, 1 for stocked
@@ -114,7 +115,7 @@ class PackServiceTest {
         List<Card> readyCards = new ArrayList<>();
         readyCards.add(new Card());
         readyCards.add(new Card());
-        when(cardRepository.findByStatus(CardProductStatus.READY.name())).thenReturn(readyCards);
+        when(cardRepository.findByStatus(CardProductStatus.READY)).thenReturn(readyCards);
 
         assertThrows(RuntimeException.class, () -> packService.createPack(requestDTO));
         verify(packDetailRepository, never()).saveAll(anyList());
@@ -124,13 +125,13 @@ class PackServiceTest {
     void updatePackStatus_success() {
         Pack mockPack = new Pack();
         mockPack.setPackId(1);
-        mockPack.setStatus("STOCKED");
+        mockPack.setStatus(PackStatus.STOCKED);
         when(packRepository.findById(1)).thenReturn(Optional.of(mockPack));
         when(packRepository.save(any())).thenReturn(mockPack);
 
         Pack result = packService.updatePackStatus(1, "RESERVED");
 
-        assertThat(result.getStatus()).isEqualTo("RESERVED");
+        assertThat(result.getStatus()).isEqualTo(PackStatus.RESERVED);
         verify(packRepository, times(1)).save(mockPack);
     }
 

@@ -1,6 +1,8 @@
 package com.example.PixelMageEcomerceProject.repository;
 
 import com.example.PixelMageEcomerceProject.entity.Payment;
+import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,7 +20,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     /**
      * Find payment by order ID.
      */
-    Optional<Payment> findByOrder_OrderId(Integer orderId);
+    List<Payment> findByOrder_OrderId(Integer orderId);
 
     /**
      * Find payment by Stripe payment intent ID.
@@ -39,7 +41,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     /**
      * Find payments by payment status.
      */
-    List<Payment> findByPaymentStatus(String paymentStatus);
+    List<Payment> findByPaymentStatus(PaymentStatus paymentStatus);
 
     /**
      * Find saved payment methods by customer ID.

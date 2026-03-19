@@ -1,5 +1,8 @@
 package com.example.PixelMageEcomerceProject.enums;
 
+/**
+ * Card product status enumeration for different card product statuses
+ */
 public enum CardProductStatus {
     PENDING_BIND, // Tạo trong DB, chưa gắn NFC
     READY, // Đã binding NFC, sẵn sàng bán

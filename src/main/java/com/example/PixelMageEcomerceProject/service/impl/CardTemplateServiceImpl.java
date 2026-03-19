@@ -7,7 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.PixelMageEcomerceProject.dto.request.CardTemplateRequestDTO;
+import com.example.PixelMageEcomerceProject.entity.CardFramework;
 import com.example.PixelMageEcomerceProject.entity.CardTemplate;
+import com.example.PixelMageEcomerceProject.repository.CardFrameworkRepository;
 import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.CardTemplateService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import org.springframework.cache.annotation.Caching;
 public class CardTemplateServiceImpl implements CardTemplateService {
 
     private final CardTemplateRepository cardTemplateRepository;
+    private final CardFrameworkRepository cardFrameworkRepository;
 
     @Override
     @Caching(evict = {
@@ -32,6 +35,18 @@ public class CardTemplateServiceImpl implements CardTemplateService {
         cardTemplate.setName(cardTemplateRequestDTO.getName());
         cardTemplate.setDescription(cardTemplateRequestDTO.getDescription());
         cardTemplate.setDesignPath(cardTemplateRequestDTO.getDesignPath());
+        cardTemplate.setArcanaType(cardTemplateRequestDTO.getArcanaType());
+        cardTemplate.setSuit(cardTemplateRequestDTO.getSuit());
+        cardTemplate.setCardNumber(cardTemplateRequestDTO.getCardNumber());
+        cardTemplate.setRarity(cardTemplateRequestDTO.getRarity());
+        cardTemplate.setImagePath(cardTemplateRequestDTO.getImagePath());
+
+        if (cardTemplateRequestDTO.getFrameworkId() != null) {
+            CardFramework framework = cardFrameworkRepository.findById(cardTemplateRequestDTO.getFrameworkId())
+                    .orElseThrow(() -> new RuntimeException("CardFramework not found with id: " + cardTemplateRequestDTO.getFrameworkId()));
+            cardTemplate.setCardFramework(framework);
+        }
+
         return cardTemplateRepository.save(cardTemplate);
     }
 
@@ -47,6 +62,18 @@ public class CardTemplateServiceImpl implements CardTemplateService {
             updatedTemplate.setName(cardTemplateRequestDTO.getName());
             updatedTemplate.setDescription(cardTemplateRequestDTO.getDescription());
             updatedTemplate.setDesignPath(cardTemplateRequestDTO.getDesignPath());
+            updatedTemplate.setArcanaType(cardTemplateRequestDTO.getArcanaType());
+            updatedTemplate.setSuit(cardTemplateRequestDTO.getSuit());
+            updatedTemplate.setCardNumber(cardTemplateRequestDTO.getCardNumber());
+            updatedTemplate.setRarity(cardTemplateRequestDTO.getRarity());
+            updatedTemplate.setImagePath(cardTemplateRequestDTO.getImagePath());
+
+            if (cardTemplateRequestDTO.getFrameworkId() != null) {
+                CardFramework framework = cardFrameworkRepository.findById(cardTemplateRequestDTO.getFrameworkId())
+                        .orElseThrow(() -> new RuntimeException("CardFramework not found with id: " + cardTemplateRequestDTO.getFrameworkId()));
+                updatedTemplate.setCardFramework(framework);
+            }
+
             return cardTemplateRepository.save(updatedTemplate);
         }
         throw new RuntimeException("CardTemplate not found with id: " + id);

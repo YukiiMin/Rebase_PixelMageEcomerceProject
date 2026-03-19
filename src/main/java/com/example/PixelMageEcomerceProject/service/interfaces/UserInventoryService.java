@@ -8,4 +8,8 @@ public interface UserInventoryService {
     UserInventory upsertInventory(Integer userId, Integer cardTemplateId, int quantityChange);
 
     List<UserInventory> getUserInventory(Integer userId);
+
+    List<com.example.PixelMageEcomerceProject.entity.CardTemplate> getLinkedCardTemplates(Integer userId);
+
+    int getLinkedCardCount(Integer userId);
 }

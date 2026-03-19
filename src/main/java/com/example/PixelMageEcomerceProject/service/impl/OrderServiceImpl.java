@@ -15,6 +15,9 @@ import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.OrderItem;
 import com.example.PixelMageEcomerceProject.entity.Pack;
+import com.example.PixelMageEcomerceProject.enums.OrderStatus;
+import com.example.PixelMageEcomerceProject.enums.PackStatus;
+import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderItemRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
@@ -75,10 +78,10 @@ public class OrderServiceImpl implements OrderService {
                     try {
                         Pack pack = packRepository.findById(itemDto.getPackId())
                                 .orElseThrow(() -> new RuntimeException("Pack not found: " + itemDto.getPackId()));
-                        if (!"STOCKED".equals(pack.getStatus())) {
+                        if (!PackStatus.STOCKED.equals(pack.getStatus())) {
                             throw new RuntimeException("Pack is not STOCKED anymore");
                         }
-                        pack.setStatus("RESERVED");
+                        pack.setStatus(PackStatus.RESERVED);
                         packRepository.save(pack);
                         item.setPack(pack);
                     } finally {
@@ -149,11 +152,11 @@ public class OrderServiceImpl implements OrderService {
                 updatedOrder.setPaymentStatus(orderRequestDTO.getPaymentStatus());
             }
 
-            if ("PAID".equals(orderRequestDTO.getPaymentStatus()) && updatedOrder.getOrderItems() != null) {
+            if (PaymentStatus.SUCCEEDED.equals(orderRequestDTO.getPaymentStatus()) && updatedOrder.getOrderItems() != null) {
                 for (OrderItem item : updatedOrder.getOrderItems()) {
-                    if (item.getPack() != null && "RESERVED".equals(item.getPack().getStatus())) {
+                    if (item.getPack() != null && PackStatus.RESERVED.equals(item.getPack().getStatus())) {
                         Pack pack = item.getPack();
-                        pack.setStatus("SOLD");
+                        pack.setStatus(PackStatus.SOLD);
                         packRepository.save(pack);
                     }
                 }
@@ -182,15 +185,15 @@ public class OrderServiceImpl implements OrderService {
 
         if (order.getOrderItems() != null) {
             order.getOrderItems().forEach(item -> {
-                if (item.getPack() != null && "RESERVED".equals(item.getPack().getStatus())) {
+                if (item.getPack() != null && PackStatus.RESERVED.equals(item.getPack().getStatus())) {
                     Pack pack = item.getPack();
-                    pack.setStatus("STOCKED");
+                    pack.setStatus(PackStatus.STOCKED);
                     packRepository.save(pack);
                 }
             });
         }
 
-        order.setStatus("CANCELLED");
+        order.setStatus(OrderStatus.CANCELLED);
         return orderRepository.save(order);
     }
 
@@ -210,7 +213,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<Order> getOrdersByStatus(String status) {
+    public List<Order> getOrdersByStatus(OrderStatus status) {
         return orderRepository.findByStatus(status);
     }
 }
