@@ -17,6 +17,7 @@ import com.example.PixelMageEcomerceProject.repository.UserAchievementRepository
 import com.example.PixelMageEcomerceProject.repository.UserCollectionProgressRepository;
 import com.example.PixelMageEcomerceProject.repository.UserInventoryRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.AchievementService;
+import com.example.PixelMageEcomerceProject.service.interfaces.PmPointWalletService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class AchievementServiceImpl implements AchievementService {
     private final UserAchievementRepository userAchievementRepository;
     private final UserInventoryRepository userInventoryRepository;
     private final UserCollectionProgressRepository userCollectionProgressRepository;
+    private final PmPointWalletService pmPointWalletService;
 
     @Override
     public void checkAndGrantAchievements(Integer userId) {
@@ -54,8 +56,7 @@ public class AchievementServiceImpl implements AchievementService {
                 log.info("Achievement granted: userId={}, achievementId={}, name={}",
                         userId, achievement.getId(), achievement.getName());
 
-                // Trigger PM_point earn — uncomment after TASK-04 (PmPointWallet) is complete
-                // pmPointWalletService.credit(userId, achievement.getPmPointReward());
+                pmPointWalletService.credit(userId, achievement.getPmPointReward());
             }
         }
     }

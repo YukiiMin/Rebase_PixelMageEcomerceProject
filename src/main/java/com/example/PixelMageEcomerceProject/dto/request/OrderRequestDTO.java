@@ -23,6 +23,7 @@ public class OrderRequestDTO {
     private String paymentMethod;
     private PaymentStatus paymentStatus;
     private String notes;
+    private String voucherCode;
     private List<OrderItemRequestDTO> orderItems;
 }
 

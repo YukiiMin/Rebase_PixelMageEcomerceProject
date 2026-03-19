@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +26,7 @@ import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.OrderService;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
 import com.example.PixelMageEcomerceProject.service.interfaces.RedisLockService;
+import com.example.PixelMageEcomerceProject.service.interfaces.VoucherService;
 import com.stripe.model.PaymentIntent;
 
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class OrderServiceImpl implements OrderService {
     private final PackRepository packRepository;
     private final OrderItemRepository orderItemRepository;
     private final RedisLockService redisLockService;
+    private final VoucherService voucherService;
 
     @Override
     public Order createOrder(OrderRequestDTO orderRequestDTO) {
@@ -51,11 +54,21 @@ public class OrderServiceImpl implements OrderService {
         order.setAccount(account);
         order.setOrderDate(orderRequestDTO.getOrderDate());
         order.setStatus(orderRequestDTO.getStatus());
-        order.setTotalAmount(orderRequestDTO.getTotalAmount());
         order.setShippingAddress(orderRequestDTO.getShippingAddress());
         order.setPaymentMethod(orderRequestDTO.getPaymentMethod());
         order.setPaymentStatus(orderRequestDTO.getPaymentStatus());
         order.setNotes(orderRequestDTO.getNotes());
+
+        if (orderRequestDTO.getVoucherCode() != null && !orderRequestDTO.getVoucherCode().trim().isEmpty()) {
+            BigDecimal discount = voucherService.redeemVoucher(orderRequestDTO.getVoucherCode(), orderRequestDTO.getCustomerId(), orderRequestDTO.getTotalAmount());
+            BigDecimal newTotal = orderRequestDTO.getTotalAmount().subtract(discount);
+            if (newTotal.compareTo(BigDecimal.ZERO) < 0) {
+                newTotal = BigDecimal.ZERO;
+            }
+            order.setTotalAmount(newTotal);
+        } else {
+            order.setTotalAmount(orderRequestDTO.getTotalAmount());
+        }
 
         Order savedOrder = orderRepository.save(order);
 
