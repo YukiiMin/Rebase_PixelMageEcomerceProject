@@ -16,6 +16,7 @@ import com.example.PixelMageEcomerceProject.repository.CardRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingCardRepository;
 import com.example.PixelMageEcomerceProject.exceptions.CardLockedInSessionException;
 import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
+import com.example.PixelMageEcomerceProject.service.interfaces.AchievementService;
 import com.example.PixelMageEcomerceProject.service.interfaces.NFCScanService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
 import com.example.PixelMageEcomerceProject.service.interfaces.WebSocketNotificationService;
@@ -32,6 +33,7 @@ public class NFCScanServiceImpl implements NFCScanService {
     private final UserInventoryService userInventoryService;
     private final WebSocketNotificationService wsNotificationService;
     private final ReadingCardRepository readingCardRepository;
+    private final AchievementService achievementService;
 
     @Override
     public Map<String, Object> scanNFC(String nfcUid, Integer userId) {
@@ -104,6 +106,9 @@ public class NFCScanServiceImpl implements NFCScanService {
             userInventoryService.upsertInventory(userId, card.getCardTemplate().getCardTemplateId(), 1);
         }
 
+        // Step 5: checkAndGrantAchievements (Sprint 2.4 TASK-03)
+        achievementService.checkAndGrantAchievements(userId);
+
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Card linked successfully");
         response.put("card_info", card);
@@ -156,6 +161,9 @@ public class NFCScanServiceImpl implements NFCScanService {
         if (card.getCardTemplate() != null) {
             userInventoryService.upsertInventory(userId, card.getCardTemplate().getCardTemplateId(), -1);
         }
+
+        // Step 5: revokeIfConditionNotMet (Sprint 2.4 TASK-03)
+        achievementService.revokeIfConditionNotMet(userId);
 
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Card unlinked successfully");

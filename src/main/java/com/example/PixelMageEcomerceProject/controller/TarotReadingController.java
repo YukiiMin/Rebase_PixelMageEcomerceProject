@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
+import com.example.PixelMageEcomerceProject.entity.ReadingSession;
 import com.example.PixelMageEcomerceProject.entity.Spread;
 import com.example.PixelMageEcomerceProject.service.interfaces.TarotReadingService;
 
@@ -90,11 +91,11 @@ public class TarotReadingController {
      * Lấy danh sách các phiên đọc bài của tôi
      */
     @GetMapping("/sessions")
-    public ResponseEntity<ResponseBase<List<com.example.PixelMageEcomerceProject.entity.ReadingSession>>> getMyReadingSessions() {
+    public ResponseEntity<ResponseBase<List<ReadingSession>>> getMyReadingSessions() {
         try {
             // Hardcode accountId=1 for testing purpose. Usually we get it from JWT Context
             Integer accountId = 1;
-            List<com.example.PixelMageEcomerceProject.entity.ReadingSession> sessions = tarotReadingService.getSessionsByAccount(accountId);
+            List<ReadingSession> sessions = tarotReadingService.getSessionsByAccount(accountId);
             return ResponseBase.ok(sessions, "Sessions retrieved successfully");
         } catch (Exception e) {
             return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());

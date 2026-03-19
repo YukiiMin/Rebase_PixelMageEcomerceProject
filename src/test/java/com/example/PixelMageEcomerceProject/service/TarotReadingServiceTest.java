@@ -108,6 +108,7 @@ public class TarotReadingServiceTest {
         Map<String, Object> result = tarotReadingService.drawCards(1, false);
 
         assertNotNull(result);
+        
         List<Map<String, Object>> drawnCards = (List<Map<String, Object>>) result.get("drawnCards");
         assertEquals(3, drawnCards.size());
         verify(userInventoryService).getLinkedCardTemplates(1);

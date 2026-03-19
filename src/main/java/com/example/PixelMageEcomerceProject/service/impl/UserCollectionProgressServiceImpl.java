@@ -72,7 +72,7 @@ public class UserCollectionProgressServiceImpl implements UserCollectionProgress
             virtualProgress.setOwnedCount(0);
             // Calculate total items in collection
             int totalItems = collectionItemRepository.findByCardCollectionCollectionId(collectionId).stream()
-                    .mapToInt(com.example.PixelMageEcomerceProject.entity.CollectionItem::getRequiredQuantity)
+                    .mapToInt(CollectionItem::getRequiredQuantity)
                     .sum();
             virtualProgress.setRequiredCount(totalItems);
             virtualProgress.setCompletionPercent(0.0);

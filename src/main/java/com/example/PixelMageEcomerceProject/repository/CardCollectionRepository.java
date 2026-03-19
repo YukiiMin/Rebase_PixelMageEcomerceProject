@@ -16,6 +16,8 @@ public interface CardCollectionRepository extends JpaRepository<CardCollection, 
 
     List<CardCollection> findByAccountCustomerId(Integer customerId);
 
+    List<CardCollection> findByAccountCustomerIdAndIsVisibleTrue(Integer customerId);
+
     Optional<CardCollection> findByCollectionIdAndAccountCustomerId(Integer collectionId, Integer customerId);
 
     @Query("SELECT c FROM CardCollection c WHERE c.isPublic = true")

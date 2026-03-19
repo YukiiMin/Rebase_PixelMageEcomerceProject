@@ -214,7 +214,7 @@ VALUES (
     1, -- owned by admin account
     true,
     true,
-    'ACHIEVEMENT',
+    'STANDARD',
     false, -- ẩn, sẽ bật qua AdminCollectionController
     'POINTS',
     '{"points": 100}',

@@ -324,6 +324,6 @@ public class TarotReadingServiceImpl implements TarotReadingService {
     @Override
     public List<ReadingSession> getSessionsByAccount(Integer accountId) {
         return sessionRepository.findByAccount_CustomerIdAndMode(accountId,
-                com.example.PixelMageEcomerceProject.enums.ReadingSessionMode.YOUR_DECK);
+                ReadingSessionMode.YOUR_DECK);
     }
 }

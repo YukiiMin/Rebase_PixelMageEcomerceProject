@@ -25,6 +25,7 @@ import com.example.PixelMageEcomerceProject.repository.CardRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingCardRepository;
 import com.example.PixelMageEcomerceProject.service.impl.NFCScanServiceImpl;
 import com.example.PixelMageEcomerceProject.exceptions.CardLockedInSessionException;
+import com.example.PixelMageEcomerceProject.service.interfaces.AchievementService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
 import com.example.PixelMageEcomerceProject.service.interfaces.WebSocketNotificationService;
 import java.util.Arrays;
@@ -42,6 +43,8 @@ class NFCScanServiceTest {
     private ReadingCardRepository readingCardRepository;
     @Mock
     private WebSocketNotificationService wsNotificationService;
+    @Mock
+    private AchievementService achievementService;
 
     @InjectMocks
     private NFCScanServiceImpl nfcScanService;

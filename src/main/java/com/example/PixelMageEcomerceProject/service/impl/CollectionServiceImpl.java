@@ -100,7 +100,7 @@ public class CollectionServiceImpl implements CollectionService {
 
     @Override
     public List<CardCollection> getCollectionsByCustomerId(Integer customerId) {
-        return cardCollectionRepository.findByAccountCustomerId(customerId);
+        return cardCollectionRepository.findByAccountCustomerIdAndIsVisibleTrue(customerId);
     }
 
     @Override

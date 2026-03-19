@@ -6,7 +6,5 @@ package com.example.PixelMageEcomerceProject.enums;
 public enum CollectionType {
     STANDARD,
     LIMITED,
-    HIDDEN,
-    ACHIEVEMENT,
-    DIY
+    HIDDEN
 }
