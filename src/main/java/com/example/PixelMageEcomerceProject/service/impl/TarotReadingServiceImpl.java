@@ -7,9 +7,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -22,6 +23,11 @@ import com.example.PixelMageEcomerceProject.entity.ReadingSession;
 import com.example.PixelMageEcomerceProject.entity.Spread;
 import com.example.PixelMageEcomerceProject.enums.ReadingSessionMode;
 import com.example.PixelMageEcomerceProject.enums.ReadingSessionStatus;
+import com.example.PixelMageEcomerceProject.exceptions.ActiveSessionExistsException;
+import com.example.PixelMageEcomerceProject.exceptions.GuestReadingLimitException;
+import com.example.PixelMageEcomerceProject.exceptions.InsufficientCardsException;
+import com.example.PixelMageEcomerceProject.exceptions.RedisUnavailableException;
+import com.example.PixelMageEcomerceProject.exceptions.SessionExpiredException;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.DivineHelperRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingCardRepository;
@@ -30,35 +36,28 @@ import com.example.PixelMageEcomerceProject.repository.SpreadRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.CardTemplateService;
 import com.example.PixelMageEcomerceProject.service.interfaces.TarotReadingService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
-import com.example.PixelMageEcomerceProject.exceptions.InsufficientCardsException;
-import com.example.PixelMageEcomerceProject.exceptions.GuestReadingLimitException;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class TarotReadingServiceImpl implements TarotReadingService {
 
-    @Autowired
-    private SpreadRepository spreadRepository;
-
-    @Autowired
-    private ReadingSessionRepository sessionRepository;
-
-    @Autowired
-    private ReadingCardRepository readingCardRepository;
-
-    @Autowired
-    private DivineHelperRepository divineHelperRepository;
-
-    @Autowired
-    private AccountRepository accountRepository;
-
-    @Autowired
-    private CardTemplateService cardTemplateService;
-
-    @Autowired
-    private UserInventoryService userInventoryService;
+    // All dependencies final — constructor-injected by Lombok @RequiredArgsConstructor
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final SpreadRepository spreadRepository;
+    private final ReadingSessionRepository sessionRepository;
+    private final ReadingCardRepository readingCardRepository;
+    private final DivineHelperRepository divineHelperRepository;
+    private final AccountRepository accountRepository;
+    private final CardTemplateService cardTemplateService;
+    private final UserInventoryService userInventoryService;
 
     @Value("${OPENAI_API_KEY:}")
     private String openAiApiKey;
@@ -69,6 +68,9 @@ public class TarotReadingServiceImpl implements TarotReadingService {
     private final SecureRandom secureRandom = new SecureRandom();
     private final RestTemplate restTemplate = new RestTemplate();
 
+    private static final int EXPLORE_TTL_MINUTES = 30;
+    private static final String EXPLORE_REDIS_KEY_PREFIX = "explore:session:";
+
     @Override
     @Cacheable("spreads")
     public List<Spread> getAllSpreads() {
@@ -76,6 +78,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
     }
 
     @Override
+    @Transactional
     public Map<String, Object> createSession(Integer accountId, Integer spreadId, String mode) {
         // Validate Spread
         Spread spread = spreadRepository.findById(spreadId)
@@ -84,6 +87,15 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         // Ensure Account exists
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
+
+        // ── TASK-01: One active session check ──────────────────────────────────
+        Optional<ReadingSession> active = sessionRepository
+                .findFirstByAccount_CustomerIdAndStatusIn(
+                        accountId, List.of(ReadingSessionStatus.PENDING, ReadingSessionStatus.INTERPRETING));
+        if (active.isPresent()) {
+            throw new ActiveSessionExistsException(active.get().getSessionId());
+        }
+        // ───────────────────────────────────────────────────────────────────────
 
         if ("YOUR_DECK".equals(mode)) {
             int userCount = userInventoryService.getLinkedCardCount(accountId);
@@ -98,14 +110,13 @@ public class TarotReadingServiceImpl implements TarotReadingService {
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime usedAt = account.getGuestReadingUsedAt();
                 boolean usedToday = usedAt != null && usedAt.toLocalDate().equals(now.toLocalDate());
-                
+
                 if (usedToday) {
                     throw new GuestReadingLimitException(
                         "Bạn đã dùng lượt đọc thử hôm nay. " +
-                        "Quay lại sau 00:00 hoặc mua Pack để đọc không giới hạn."
-                    );
+                        "Quay lại sau 00:00 hoặc mua Pack để đọc không giới hạn.");
                 }
-                
+
                 account.setGuestReadingUsedAt(now);
                 accountRepository.save(account);
             }
@@ -117,6 +128,21 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         session.setMode(mode == null ? ReadingSessionMode.EXPLORE : ReadingSessionMode.valueOf(mode));
         session.setStatus(ReadingSessionStatus.PENDING);
         ReadingSession savedSession = sessionRepository.save(session);
+
+        // ── TASK-01: EXPLORE Redis TTL — fail-closed ───────────────────────────
+        if (ReadingSessionMode.EXPLORE.equals(savedSession.getMode())) {
+            String redisKey = EXPLORE_REDIS_KEY_PREFIX + savedSession.getSessionId();
+            try {
+                redisTemplate.opsForValue().set(redisKey, "active", EXPLORE_TTL_MINUTES, TimeUnit.MINUTES);
+                log.info("[EXPLORE-TTL] Key set: {} TTL={}min", redisKey, EXPLORE_TTL_MINUTES);
+            } catch (Exception e) {
+                log.error("[EXPLORE-TTL] Redis unavailable — aborting session creation: {}", e.getMessage());
+                // @Transactional rolls back sessionRepository.save() automatically
+                throw new RedisUnavailableException(
+                        "Hệ thống tạm thời không khả dụng. Vui lòng thử lại sau.");
+            }
+        }
+        // ───────────────────────────────────────────────────────────────────────
 
         Map<String, Object> response = new HashMap<>();
         response.put("sessionId", savedSession.getSessionId());
@@ -131,7 +157,21 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         ReadingSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
-        if (!"PENDING".equals(session.getStatus().toString())) {
+        // ── TASK-01: Lazy EXPIRED check for EXPLORE sessions ───────────────────
+        if (ReadingSessionMode.EXPLORE.equals(session.getMode())
+                && ReadingSessionStatus.PENDING.equals(session.getStatus())) {
+            String redisKey = EXPLORE_REDIS_KEY_PREFIX + sessionId;
+            Boolean keyExists = redisTemplate.hasKey(redisKey);
+            if (!Boolean.TRUE.equals(keyExists)) {
+                session.setStatus(ReadingSessionStatus.EXPIRED);
+                sessionRepository.save(session);
+                log.warn("[EXPLORE-TTL] Session #{} expired — key {} not found in Redis", sessionId, redisKey);
+                throw new SessionExpiredException(sessionId);
+            }
+        }
+        // ───────────────────────────────────────────────────────────────────────
+
+        if (!ReadingSessionStatus.PENDING.equals(session.getStatus())) {
             throw new RuntimeException("Session is already completed or processing. Redraw is not allowed.");
         }
 

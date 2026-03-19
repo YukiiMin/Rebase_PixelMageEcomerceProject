@@ -6,9 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -82,7 +80,7 @@ class SetStoryServiceImplTest {
         // Assert that save is called with isActive = false
         ArgumentCaptor<UserStoryUnlock> captor = ArgumentCaptor.forClass(UserStoryUnlock.class);
         verify(userStoryUnlockRepository).save(captor.capture());
-        
+
         UserStoryUnlock savedUnlock = captor.getValue();
         assertThat(savedUnlock.getIsActive()).isFalse();
     }

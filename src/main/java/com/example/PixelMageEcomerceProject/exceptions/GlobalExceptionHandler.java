@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+import java.util.Map;
+
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
 import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.ApiException;
@@ -25,12 +27,40 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GlobalExceptionHandler {
 
+        // ── TASK-01 handlers ────────────────────────────────────────────────────
+
+        @ExceptionHandler(ActiveSessionExistsException.class)
+        public ResponseEntity<ResponseBase<Map<String, Object>>> handleActiveSessionExists(
+                        ActiveSessionExistsException ex) {
+                log.warn("Active session exists: sessionId={}", ex.getActiveSessionId());
+                Map<String, Object> body = new java.util.HashMap<>();
+                body.put("message", ex.getMessage());
+                body.put("activeSessionId", ex.getActiveSessionId());
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(new ResponseBase<>(HttpStatus.CONFLICT.value(), ex.getMessage(), body));
+        }
+
+        @ExceptionHandler(RedisUnavailableException.class)
+        public ResponseEntity<ResponseBase<Void>> handleRedisUnavailable(RedisUnavailableException ex) {
+                log.error("Redis unavailable: {}", ex.getMessage());
+                return ResponseBase.error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        }
+
+        @ExceptionHandler(SessionExpiredException.class)
+        public ResponseEntity<ResponseBase<Void>> handleSessionExpired(SessionExpiredException ex) {
+                log.warn("EXPLORE session expired: {}", ex.getMessage());
+                return ResponseBase.error(HttpStatus.GONE, ex.getMessage());
+        }
+
+        // ── End TASK-01 handlers ─────────────────────────────────────────────────
+
         @ExceptionHandler(PaymentNotFoundException.class)
         public ResponseEntity<ResponseBase<Void>> handlePaymentNotFoundException(PaymentNotFoundException ex,
                         WebRequest request) {
                 log.error("Payment not found: {}", ex.getMessage());
                 return ResponseBase.error(HttpStatus.NOT_FOUND, ex.getMessage());
         }
+
 
         @ExceptionHandler(PaymentProcessingException.class)
         public ResponseEntity<ResponseBase<Void>> handlePaymentProcessingException(PaymentProcessingException ex,
