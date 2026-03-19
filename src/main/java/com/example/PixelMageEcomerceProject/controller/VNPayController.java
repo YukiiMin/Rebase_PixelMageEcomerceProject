@@ -66,4 +66,10 @@ public class VNPayController {
         String redirectUrl = "http://localhost:3000/payment-result?success=" + isSuccess;
         return new RedirectView(redirectUrl);
     }
+
+    @GetMapping("/vnpay-ipn")
+    @Operation(summary = "Handle VNPay IPN", description = "Instant Payment Notification endpoint for VNPay")
+    public Map<String, String> vnpayIpn(HttpServletRequest request) {
+        return vnPayService.processIpn(request);
+    }
 }

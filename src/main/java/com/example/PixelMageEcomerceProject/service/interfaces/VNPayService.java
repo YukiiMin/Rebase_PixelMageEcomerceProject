@@ -1,6 +1,7 @@
 package com.example.PixelMageEcomerceProject.service.interfaces;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 public interface VNPayService {
 
@@ -15,4 +16,11 @@ public interface VNPayService {
      * Returns true if payment was successful, false otherwise.
      */
     boolean processPaymentReturn(HttpServletRequest request);
+
+    /**
+     * Processes the IPN (Instant Payment Notification) from VNPAY.
+     * Validates the checksum, handles idempotency, and updates the order/payment status.
+     * Returns a Map with RspCode and Message for VNPAY.
+     */
+    Map<String, String> processIpn(HttpServletRequest request);
 }

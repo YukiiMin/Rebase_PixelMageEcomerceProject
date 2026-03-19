@@ -29,17 +29,24 @@ import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.repository.PaymentRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.VNPayService;
 
+import com.example.PixelMageEcomerceProject.exceptions.RedisUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class VNPayServiceImpl implements VNPayService {
 
     private final VNPayConfig vnPayConfig;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final PackRepository packRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public String createPaymentUrl(Integer orderId, int amount, String orderInfo, String ipAddress) {
@@ -141,31 +148,10 @@ public class VNPayServiceImpl implements VNPayService {
                         Integer orderId = Integer.parseInt(parts[0]);
                         Order order = orderRepository.findById(orderId).orElse(null);
                         if (order != null && PaymentStatus.PENDING.equals(order.getPaymentStatus())) {
-                            order.setPaymentStatus(PaymentStatus.SUCCEEDED);
-                            order.setStatus(OrderStatus.PROCESSING);
-
-                            if (order.getOrderItems() != null) {
-                                order.getOrderItems().forEach(item -> {
-                                    if (item.getPack() != null && PackStatus.RESERVED.equals(item.getPack().getStatus())) {
-                                        Pack pack = item.getPack();
-                                        pack.setStatus(PackStatus.SOLD);
-                                        packRepository.save(pack);
-                                    }
-                                });
-                            }
-                            order.setStatus(OrderStatus.COMPLETED);
-                            orderRepository.save(order);
+                            updateOrderAndPacksOnPaymentSuccess(order);
 
                             // Save payment record
-                            Payment payment = new Payment();
-                            payment.setOrder(order);
-                            payment.setStripePaymentIntentId("VNPAY_" + request.getParameter("vnp_TransactionNo"));
-                            payment.setAmount(
-                                    new BigDecimal(request.getParameter("vnp_Amount")).divide(new BigDecimal(100)));
-                            payment.setCurrency("VND");
-                            payment.setPaymentMethod("VNPAY");
-                            payment.setPaymentStatus(PaymentStatus.SUCCEEDED);
-                            paymentRepository.save(payment);
+                            savePaymentRecord(order, request.getParameter("vnp_TransactionNo"), request.getParameter("vnp_Amount"));
                         }
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
@@ -174,12 +160,108 @@ public class VNPayServiceImpl implements VNPayService {
                 return true;
             } else {
                 // Payment Failure from VNPAY
-                String txnRef = request.getParameter("vnp_TxnRef");
-                // Optional: Record failure
                 return false;
             }
         } else {
             return false;
         }
+    }
+
+    @Override
+    @Transactional
+    public Map<String, String> processIpn(HttpServletRequest request) {
+        Map<String, String> result = new HashMap<>();
+        Map<String, String> fields = new HashMap<>();
+        for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements(); ) {
+            String fieldName = params.nextElement();
+            String fieldValue = request.getParameter(fieldName);
+            if ((fieldValue != null) && (fieldValue.length() > 0)) {
+                fields.put(fieldName, fieldValue);
+            }
+        }
+
+        String vnp_SecureHash = request.getParameter("vnp_SecureHash");
+        fields.remove("vnp_SecureHashType");
+        fields.remove("vnp_SecureHash");
+
+        String signValue = VNPayConfig.hashAllFields(fields, vnPayConfig.getVnp_HashSecret());
+
+        if (!signValue.equals(vnp_SecureHash)) {
+            result.put("RspCode", "97");
+            result.put("Message", "Invalid Checksum");
+            return result;
+        }
+
+        String txnRef = request.getParameter("vnp_TxnRef");
+        Integer orderId = Integer.parseInt(txnRef.split("-")[0]);
+        Order order = orderRepository.findById(orderId).orElse(null);
+
+        if (order == null) {
+            result.put("RspCode", "01");
+            result.put("Message", "Order not found");
+            return result;
+        }
+
+        // Idempotency check
+        String transactionNo = request.getParameter("vnp_TransactionNo");
+        String idempotencyKey = "payment:vnpay:" + transactionNo;
+
+        try {
+            Boolean isNew = redisTemplate.opsForValue().setIfAbsent(idempotencyKey, "processed", Duration.ofHours(24));
+            if (Boolean.FALSE.equals(isNew)) {
+                log.info("[VNPAY] Duplicate IPN detected for TransactionNo: {} — skipping", transactionNo);
+                result.put("RspCode", "00");
+                result.put("Message", "Confirm Success");
+                return result;
+            }
+        } catch (Exception e) {
+            log.error("[VNPAY] Redis unavailable during idempotency check: {}", e.getMessage());
+            throw new RedisUnavailableException("Redis unavailable for idempotency check");
+        }
+
+        if ("00".equals(request.getParameter("vnp_ResponseCode"))) {
+            if (PaymentStatus.PENDING.equals(order.getPaymentStatus())) {
+                updateOrderAndPacksOnPaymentSuccess(order);
+                savePaymentRecord(order, transactionNo, request.getParameter("vnp_Amount"));
+                result.put("RspCode", "00");
+                result.put("Message", "Confirm Success");
+            } else {
+                result.put("RspCode", "02");
+                result.put("Message", "Order already confirmed");
+            }
+        } else {
+            result.put("RspCode", "00");
+            result.put("Message", "Confirm Success"); // VNPAY expects 00 even for fail response to acknowledge IPN
+        }
+
+        return result;
+    }
+
+    private void updateOrderAndPacksOnPaymentSuccess(Order order) {
+        order.setPaymentStatus(PaymentStatus.SUCCEEDED);
+        order.setStatus(OrderStatus.PROCESSING);
+
+        if (order.getOrderItems() != null) {
+            order.getOrderItems().forEach(item -> {
+                if (item.getPack() != null && PackStatus.RESERVED.equals(item.getPack().getStatus())) {
+                    Pack pack = item.getPack();
+                    pack.setStatus(PackStatus.SOLD);
+                    packRepository.save(pack);
+                }
+            });
+        }
+        order.setStatus(OrderStatus.COMPLETED);
+        orderRepository.save(order);
+    }
+
+    private void savePaymentRecord(Order order, String transactionNo, String amountStr) {
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        payment.setStripePaymentIntentId("VNPAY_" + transactionNo);
+        payment.setAmount(new BigDecimal(amountStr).divide(new BigDecimal(100)));
+        payment.setCurrency("VND");
+        payment.setPaymentMethod("VNPAY");
+        payment.setPaymentStatus(PaymentStatus.SUCCEEDED);
+        paymentRepository.save(payment);
     }
 }

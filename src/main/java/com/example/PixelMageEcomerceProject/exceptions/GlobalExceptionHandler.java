@@ -9,6 +9,7 @@ import org.springframework.web.context.request.WebRequest;
 import java.util.Map;
 
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
+import com.example.PixelMageEcomerceProject.exceptions.PackReservationException;
 import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.ApiException;
 import com.stripe.exception.AuthenticationException;
@@ -39,6 +40,16 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                                 .body(new ResponseBase<>(HttpStatus.CONFLICT.value(), ex.getMessage(), body));
         }
+
+        // ── TASK-06 handlers ───────────────────────────────────────────────────
+
+        @ExceptionHandler(PackReservationException.class)
+        public ResponseEntity<ResponseBase<Void>> handlePackReservation(PackReservationException ex) {
+                log.warn("[LOCK] Pack reservation conflict: {}", ex.getMessage());
+                return ResponseBase.error(HttpStatus.CONFLICT, ex.getMessage());
+        }
+
+        // ── End TASK-06 handlers ─────────────────────────────────────────────────
 
         @ExceptionHandler(RedisUnavailableException.class)
         public ResponseEntity<ResponseBase<Void>> handleRedisUnavailable(RedisUnavailableException ex) {

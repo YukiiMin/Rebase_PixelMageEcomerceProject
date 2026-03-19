@@ -25,8 +25,11 @@ import com.example.PixelMageEcomerceProject.repository.OrderRepository;
 import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.OrderService;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
+import com.example.PixelMageEcomerceProject.exceptions.PackReservationException;
+import com.example.PixelMageEcomerceProject.exceptions.RedisUnavailableException;
 import com.example.PixelMageEcomerceProject.service.interfaces.RedisLockService;
 import com.example.PixelMageEcomerceProject.service.interfaces.VoucherService;
+import lombok.extern.slf4j.Slf4j;
 import com.stripe.model.PaymentIntent;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
@@ -83,10 +87,19 @@ public class OrderServiceImpl implements OrderService {
                 item.setCustomText(itemDto.getCustomText());
 
                 if (itemDto.getPackId() != null) {
-                    String lockKey = "pack:" + itemDto.getPackId() + ":lock";
-                    if (!redisLockService.tryLock(lockKey, 5)) {
-                        throw new RuntimeException(
-                                "Pack " + itemDto.getPackId() + " is currently being reserved. Please try again.");
+                    String lockKey = "lock:pack:" + itemDto.getPackId();
+                    // Fail-closed: Redis unavailable → 503. Double-booking is worse than downtime.
+                    boolean locked;
+                    try {
+                        locked = redisLockService.tryLock(lockKey, 5);
+                    } catch (Exception e) {
+                        log.error("[LOCK] Redis unavailable for pack {}: {}", itemDto.getPackId(), e.getMessage());
+                        throw new RedisUnavailableException(
+                                "Dịch vụ đặt hàng tạm thời không khả dụng. Vui lòng thử lại sau.");
+                    }
+                    if (!locked) {
+                        throw new PackReservationException(
+                                "Pack đang được đặt. Thử lại sau vài giây.");
                     }
                     try {
                         Pack pack = packRepository.findById(itemDto.getPackId())

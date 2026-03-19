@@ -24,6 +24,7 @@ import com.example.PixelMageEcomerceProject.repository.UserAchievementRepository
 import com.example.PixelMageEcomerceProject.repository.UserCollectionProgressRepository;
 import com.example.PixelMageEcomerceProject.repository.UserInventoryRepository;
 import com.example.PixelMageEcomerceProject.service.impl.AchievementServiceImpl;
+import com.example.PixelMageEcomerceProject.service.interfaces.PmPointWalletService;
 
 /**
  * Unit tests for AchievementServiceImpl — Sprint 2.4 TASK-03.
@@ -36,6 +37,7 @@ class AchievementServiceTest {
     @Mock private UserAchievementRepository userAchievementRepository;
     @Mock private UserInventoryRepository userInventoryRepository;
     @Mock private UserCollectionProgressRepository userCollectionProgressRepository;
+    @Mock PmPointWalletService pmPointWalletService;
 
     @InjectMocks
     private AchievementServiceImpl achievementService;

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -26,6 +27,8 @@ import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.OrderItem;
 import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.enums.PackStatus;
+import com.example.PixelMageEcomerceProject.exceptions.PackReservationException;
+import com.example.PixelMageEcomerceProject.exceptions.RedisUnavailableException;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderItemRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
@@ -33,6 +36,7 @@ import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.service.impl.OrderServiceImpl;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
 import com.example.PixelMageEcomerceProject.service.interfaces.RedisLockService;
+import com.example.PixelMageEcomerceProject.service.interfaces.VoucherService;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -49,6 +53,8 @@ class OrderServiceTest {
     private PaymentService paymentService;
     @Mock
     private RedisLockService redisLockService;
+    @Mock
+    private VoucherService voucherService;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -133,5 +139,48 @@ class OrderServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getOrderItems()).hasSize(1);
         verify(packRepository, never()).findById(any());
+    }
+    // ── TASK-06: concurrent_samepack ────────────────────────────────────────────
+
+    @Test
+    void createOrder_concurrent_samepack_lockContention_throwsPackReservationException() {
+        // Simulate: lock already held by another request → tryLock returns false → 409
+        OrderRequestDTO req = buildOrderReqWithPack(10, 5);
+
+        when(accountRepository.findById(10)).thenReturn(Optional.of(new Account()));
+        when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
+        when(redisLockService.tryLock(eq("lock:pack:5"), eq(5L))).thenReturn(false);
+
+        assertThrows(PackReservationException.class, () -> orderService.createOrder(req));
+        verify(packRepository, never()).findById(any());
+        verify(redisLockService, never()).releaseLock(any());
+    }
+
+    // ── TASK-06: redis_down_503 ─────────────────────────────────────────────────
+
+    @Test
+    void createOrder_redis_down_throwsRedisUnavailableException() {
+        // Simulate: Redis down → tryLock throws DataAccessException → fail-closed → 503
+        OrderRequestDTO req = buildOrderReqWithPack(10, 5);
+
+        when(accountRepository.findById(10)).thenReturn(Optional.of(new Account()));
+        when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
+        when(redisLockService.tryLock(any(), anyLong()))
+                .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("Redis down"));
+
+        assertThrows(RedisUnavailableException.class, () -> orderService.createOrder(req));
+        verify(packRepository, never()).findById(any());
+        verify(redisLockService, never()).releaseLock(any());
+    }
+
+    // ── Helper ─────────────────────────────────────────────────────────────────
+
+    private OrderRequestDTO buildOrderReqWithPack(int customerId, int packId) {
+        OrderRequestDTO req = new OrderRequestDTO();
+        req.setCustomerId(customerId);
+        OrderItemRequestDTO itemReq = new OrderItemRequestDTO();
+        itemReq.setPackId(packId);
+        req.setOrderItems(List.of(itemReq));
+        return req;
     }
 }
