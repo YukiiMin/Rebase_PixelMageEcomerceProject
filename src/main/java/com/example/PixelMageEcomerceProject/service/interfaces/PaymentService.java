@@ -1,9 +1,10 @@
 package com.example.PixelMageEcomerceProject.service.interfaces;
 
 import com.example.PixelMageEcomerceProject.entity.Payment;
-import com.stripe.model.PaymentIntent;
-import com.stripe.model.PaymentMethod;
-import com.stripe.model.SetupIntent;
+import com.example.PixelMageEcomerceProject.enums.PaymentGateway;
+import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
+import com.example.PixelMageEcomerceProject.service.model.InitPaymentResult;
+
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -13,64 +14,44 @@ import java.util.Optional;
 
 @Service
 public interface PaymentService {
-    
+
     /**
-     * Create a payment intent for one-time payment.
+     * Initialize payment using the active gateway.
      */
-    PaymentIntent createPaymentIntent(Integer orderId, BigDecimal amount, String currency);
-    
-    /**
-     * Create a setup intent for saving payment method.
-     */
-    SetupIntent createSetupIntent(Integer customerId);
-    
-    /**
-     * Confirm payment with existing payment method.
-     */
-    PaymentIntent confirmPaymentWithSavedCard(Integer orderId, String paymentMethodId);
-    
+    InitPaymentResult initiatePayment(Integer orderId, BigDecimal amount, String currency);
+
     /**
      * Save payment record to database after successful payment.
      */
-    Payment savePaymentRecord(Integer orderId, String stripePaymentIntentId, Map<String, Object> paymentData);
-    
+    Payment savePaymentRecord(Integer orderId, String gatewayTransactionId, PaymentGateway gateway, Map<String, Object> paymentData);
+
     /**
      * Update payment status.
      */
     Payment updatePaymentStatus(Integer paymentId, String status, String failureReason);
-    
+
     /**
      * Get payment by order ID.
      */
     List<Payment> getPaymentByOrderId(Integer orderId);
-    
+
     /**
-     * Get payment by payment intent ID.
+     * Get payment by gateway transaction ID.
      */
-    Optional<Payment> getPaymentByPaymentIntentId(String paymentIntentId);
-    
-    /**
-     * Get customer's saved payment methods.
-     */
-    List<PaymentMethod> getSavedPaymentMethods(Integer customerId);
-    
+    Optional<Payment> getPaymentByGatewayTransactionId(String gatewayTransactionId);
+
     /**
      * Get customer's payment history.
      */
     List<Payment> getCustomerPaymentHistory(Integer customerId);
-    
-    /**
-     * Create or retrieve Stripe customer.
-     */
-    String getOrCreateStripeCustomerId(Integer customerId);
-    
-    /**
-     * Detach payment method from customer.
-     */
-    void detachPaymentMethod(String paymentMethodId);
-    
+
     /**
      * Calculate processing fee (for display purposes).
      */
     BigDecimal calculateProcessingFee(BigDecimal amount);
+
+    /**
+     * Polling payment status (useful for SEPay VietQR).
+     */
+    PaymentStatus pollPaymentStatus(String gatewayTransactionId);
 }

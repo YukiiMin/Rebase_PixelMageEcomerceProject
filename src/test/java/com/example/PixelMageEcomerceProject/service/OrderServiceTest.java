@@ -3,8 +3,9 @@ package com.example.PixelMageEcomerceProject.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,11 +15,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import com.example.PixelMageEcomerceProject.dto.request.OrderItemRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.OrderRequestDTO;
@@ -55,9 +59,20 @@ class OrderServiceTest {
     private RedisLockService redisLockService;
     @Mock
     private VoucherService voucherService;
+    @Mock
+    private PlatformTransactionManager transactionManager;
 
     @InjectMocks
     private OrderServiceImpl orderService;
+
+    @BeforeEach
+    void setUp() {
+        SimpleTransactionStatus txStatus = new SimpleTransactionStatus(true);
+        when(transactionManager.getTransaction(any())).thenReturn(txStatus);
+        // Đảm bảo commit/rollback không throw
+        doNothing().when(transactionManager).commit(any());
+        doNothing().when(transactionManager).rollback(any());
+    }
 
     @Test
     void createOrder_success_withPack() {
@@ -80,7 +95,9 @@ class OrderServiceTest {
         pack.setPackId(5);
         pack.setStatus(PackStatus.STOCKED);
         when(packRepository.findById(5)).thenReturn(Optional.of(pack));
-        when(redisLockService.tryLock(any(), anyLong())).thenReturn(true);
+        when(redisLockService.tryLock(anyString(), eq(30L))).thenReturn(true);
+
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
 
         Order result = orderService.createOrder(req);
 
@@ -111,13 +128,15 @@ class OrderServiceTest {
         req.setOrderItems(List.of(itemReq));
 
         when(accountRepository.findById(10)).thenReturn(Optional.of(new Account()));
-        // when(orderRepository.save(any(Order.class))).thenReturn(new Order()); // Will throw before saving
+        // when(orderRepository.save(any(Order.class))).thenReturn(new Order()); // Will
+        // throw before saving
 
         Pack pack = new Pack();
         pack.setPackId(5);
         pack.setStatus(PackStatus.RESERVED); // Not STOCKED
         when(packRepository.findById(5)).thenReturn(Optional.of(pack));
-        when(redisLockService.tryLock(any(), anyLong())).thenReturn(true);
+        when(redisLockService.tryLock(anyString(), eq(30L))).thenReturn(true);
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> orderService.createOrder(req));
         assertThat(ex.getMessage()).contains("Pack is not STOCKED anymore");
@@ -148,8 +167,9 @@ class OrderServiceTest {
         OrderRequestDTO req = buildOrderReqWithPack(10, 5);
 
         when(accountRepository.findById(10)).thenReturn(Optional.of(new Account()));
-        when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
-        when(redisLockService.tryLock(eq("lock:pack:5"), eq(5L))).thenReturn(false);
+        // when(orderRepository.save(any(Order.class))).thenAnswer(i ->
+        // i.getArgument(0)); // Won't reach here
+        when(redisLockService.tryLock(eq("lock:pack:5"), eq(30L))).thenReturn(false);
 
         assertThrows(PackReservationException.class, () -> orderService.createOrder(req));
         verify(packRepository, never()).findById(any());
@@ -164,8 +184,9 @@ class OrderServiceTest {
         OrderRequestDTO req = buildOrderReqWithPack(10, 5);
 
         when(accountRepository.findById(10)).thenReturn(Optional.of(new Account()));
-        when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
-        when(redisLockService.tryLock(any(), anyLong()))
+        // when(orderRepository.save(any(Order.class))).thenAnswer(i ->
+        // i.getArgument(0)); // Won't reach here
+        when(redisLockService.tryLock(anyString(), eq(30L)))
                 .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("Redis down"));
 
         assertThrows(RedisUnavailableException.class, () -> orderService.createOrder(req));

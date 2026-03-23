@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.controller;
 
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,27 +8,26 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.PixelMageEcomerceProject.config.PaymentConfig;
 import com.example.PixelMageEcomerceProject.dto.request.PaymentRequestDTO;
-import com.example.PixelMageEcomerceProject.dto.request.SavedCardPaymentRequestDTO;
-import com.example.PixelMageEcomerceProject.dto.response.ClientSecretResponseDTO;
 import com.example.PixelMageEcomerceProject.dto.response.PaymentResponseDTO;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
-import com.example.PixelMageEcomerceProject.dto.response.SavedPaymentMethodDTO;
 import com.example.PixelMageEcomerceProject.entity.Payment;
+import com.example.PixelMageEcomerceProject.enums.PaymentGateway;
+import com.example.PixelMageEcomerceProject.service.interfaces.PaymentGatewayStrategy;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
-import com.stripe.model.PaymentIntent;
-import com.stripe.model.PaymentMethod;
-import com.stripe.model.SetupIntent;
+import com.example.PixelMageEcomerceProject.service.model.InitPaymentResult;
+import com.example.PixelMageEcomerceProject.service.model.PaymentStrategyRequest;
+import com.example.PixelMageEcomerceProject.service.model.WebhookResult;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,239 +37,148 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
-@Tag(name = "Payment Management", description = "APIs for managing Stripe payments and saved payment methods")
+@Slf4j
+@Tag(name = "Payment Management", description = "Gateway-agnostic payment management")
 @SecurityRequirement(name = "bearerAuth")
 public class PaymentController {
 
-        private final PaymentService paymentService;
-        private final PaymentConfig paymentConfig;
+    private final PaymentService paymentService;
+    private final Map<String, PaymentGatewayStrategy> strategies;
 
-        @PostMapping("/create-payment-intent")
-        @Operation(summary = "Create payment intent", description = "Create a Stripe payment intent for one-time payment")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Payment intent created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<ClientSecretResponseDTO>> createPaymentIntent(
-                        @RequestBody PaymentRequestDTO paymentRequestDTO) {
-                try {
-                        PaymentIntent paymentIntent = paymentService.createPaymentIntent(
-                                        paymentRequestDTO.getOrderId(),
-                                        paymentRequestDTO.getAmount(),
-                                        paymentRequestDTO.getCurrency());
+    @PostMapping("/initiate")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+    @Operation(summary = "Initiate payment", description = "Initialize payment using the active gateway (SEPay)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Payment initialized successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
+    })
+    public ResponseEntity<ResponseBase<InitPaymentResult>> initiatePayment(
+            @RequestBody PaymentRequestDTO paymentRequestDTO,
+            @Parameter(description = "Payment gateway (e.g., vnpay, sepay)") @RequestParam(defaultValue = "sepay") String gateway) {
+        try {
+            log.info("[PAYMENT] initiatePayment for order {} via {}", paymentRequestDTO.getOrderId(), gateway);
+            PaymentGatewayStrategy strategy = strategies.get(gateway.toLowerCase());
+            if (strategy == null) {
+                return ResponseBase.error(HttpStatus.BAD_REQUEST, "Unsupported payment gateway: " + gateway);
+            }
 
-                        ClientSecretResponseDTO responseData = new ClientSecretResponseDTO(
-                                        paymentIntent.getClientSecret(),
-                                        paymentIntent.getId(),
-                                        null,
-                                        paymentConfig.getStripePublicKey());
+            InitPaymentResult result = strategy.initPayment(PaymentStrategyRequest.builder()
+                    .orderId(paymentRequestDTO.getOrderId())
+                    .amount(paymentRequestDTO.getAmount())
+                    .currency(paymentRequestDTO.getCurrency() != null ? paymentRequestDTO.getCurrency() : "VND")
+                    .description("Thanh toan don hang #" + paymentRequestDTO.getOrderId())
+                    .build());
 
-                        return ResponseBase.ok(responseData, "Payment intent created successfully");
+            return ResponseBase.ok(result, "Payment initialized successfully");
+        } catch (Exception e) {
+            log.error("[PAYMENT] Initiation failed", e);
+            return ResponseBase.error(HttpStatus.BAD_REQUEST, "Failed to initiate payment: " + e.getMessage());
+        }
+    }
 
-                } catch (Exception e) {
-                        return ResponseBase.error(HttpStatus.BAD_REQUEST,
-                                        "Failed to create payment intent: " + e.getMessage());
-                }
+    @PostMapping("/confirm-payment")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+    @Operation(summary = "Confirm payment", description = "Confirm payment and save record (Legacy support/Generic)")
+    public ResponseEntity<ResponseBase<PaymentResponseDTO>> confirmPayment(
+            @RequestBody Map<String, Object> paymentData) {
+        try {
+            Integer orderId = Integer.parseInt(paymentData.get("orderId").toString());
+            String txId = paymentData.get("transactionId").toString();
+            String gatewayStr = paymentData.getOrDefault("gateway", "SEPAY").toString();
+
+            Payment savedPayment = paymentService.savePaymentRecord(orderId, txId,
+                    PaymentGateway.valueOf(gatewayStr.toUpperCase()), paymentData);
+
+            return ResponseBase.ok(convertToPaymentResponseDTO(savedPayment), "Payment confirmed successfully");
+        } catch (Exception e) {
+            return ResponseBase.error(HttpStatus.BAD_REQUEST, "Payment confirmation failed: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/history/{customerId}")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+    @Operation(summary = "Get payment history", description = "Retrieve customer's payment history")
+    public ResponseEntity<ResponseBase<List<PaymentResponseDTO>>> getPaymentHistory(
+            @Parameter(description = "Customer ID") @PathVariable Integer customerId) {
+        try {
+            List<Payment> payments = paymentService.getCustomerPaymentHistory(customerId);
+            List<PaymentResponseDTO> responseData = payments.stream()
+                    .map(this::convertToPaymentResponseDTO)
+                    .collect(Collectors.toList());
+
+            return ResponseBase.ok(responseData, "Payment history retrieved successfully");
+        } catch (Exception e) {
+            return ResponseBase.error(HttpStatus.BAD_REQUEST, "Failed to retrieve history: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/order/{orderId}")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+    @Operation(summary = "Get payment by order", description = "Retrieve payment information for a specific order")
+    public ResponseEntity<ResponseBase<List<PaymentResponseDTO>>> getPaymentByOrderId(
+            @Parameter(description = "Order ID") @PathVariable Integer orderId) {
+        try {
+            List<Payment> payments = paymentService.getPaymentByOrderId(orderId);
+            List<PaymentResponseDTO> responseData = payments.stream()
+                    .map(this::convertToPaymentResponseDTO)
+                    .collect(Collectors.toList());
+
+            return ResponseBase.ok(responseData, "Payment info retrieved successfully");
+        } catch (Exception e) {
+            return ResponseBase.error(HttpStatus.NOT_FOUND, "Payment not found: " + e.getMessage());
+        }
+    }
+
+    @RequestMapping(value = "/webhook/{gateway}", method = { RequestMethod.GET, RequestMethod.POST })
+    @Operation(summary = "Generic Webhook", description = "Generic endpoint to receive payment notifications from various gateways")
+    public ResponseEntity<Object> handleWebhook(
+            @PathVariable String gateway,
+            HttpServletRequest request) {
+        log.info("[WEBHOOK] Received notification from gateway: {}", gateway);
+
+        PaymentGatewayStrategy strategy = strategies.get(gateway.toLowerCase());
+        if (strategy == null) {
+            return ResponseEntity.badRequest().body("Unsupported gateway: " + gateway);
         }
 
-        @PostMapping("/create-setup-intent")
-        @Operation(summary = "Create setup intent", description = "Create a Stripe setup intent for saving payment method")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Setup intent created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<ClientSecretResponseDTO>> createSetupIntent(
-                        @Parameter(description = "Customer ID") @RequestParam Integer customerId) {
-                try {
-                        SetupIntent setupIntent = paymentService.createSetupIntent(customerId);
-
-                        ClientSecretResponseDTO responseData = new ClientSecretResponseDTO(
-                                        setupIntent.getClientSecret(),
-                                        null,
-                                        setupIntent.getId(),
-                                        paymentConfig.getStripePublicKey());
-
-                        return ResponseBase.ok(responseData, "Setup intent created successfully");
-
-                } catch (Exception e) {
-                        return ResponseBase.error(HttpStatus.BAD_REQUEST,
-                                        "Failed to create setup intent: " + e.getMessage());
-                }
+        Map<String, String> payload = new HashMap<>();
+        Enumeration<String> parameterNames = request.getParameterNames();
+        while (parameterNames.hasMoreElements()) {
+            String paramName = parameterNames.nextElement();
+            payload.put(paramName, request.getParameter(paramName));
         }
 
-        @PostMapping("/pay-with-saved-card")
-        @Operation(summary = "Pay with saved card", description = "Process payment using a saved payment method")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Payment processed successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "400", description = "Payment failed", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<PaymentResponseDTO>> payWithSavedCard(
-                        @RequestBody SavedCardPaymentRequestDTO requestDTO) {
-                try {
-                        PaymentIntent paymentIntent = paymentService.confirmPaymentWithSavedCard(
-                                        requestDTO.getOrderId(),
-                                        requestDTO.getPaymentMethodId());
+        WebhookResult result = strategy.handleWebhook(payload);
 
-                        Map<String, Object> paymentData = new HashMap<>();
-                        Payment savedPayment = paymentService.savePaymentRecord(
-                                        requestDTO.getOrderId(),
-                                        paymentIntent.getId(),
-                                        paymentData);
-
-                        PaymentResponseDTO responseData = convertToPaymentResponseDTO(savedPayment);
-
-                        return ResponseBase.ok(responseData, "Payment processed successfully");
-
-                } catch (Exception e) {
-                        return ResponseBase.error(HttpStatus.BAD_REQUEST, "Payment failed: " + e.getMessage());
-                }
+        if (result.isSuccess()) {
+            return ResponseEntity.ok(result.getMessage());
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result.getMessage());
         }
+    }
 
-        @PostMapping("/confirm-payment/{paymentIntentId}")
-        @Operation(summary = "Confirm payment", description = "Confirm payment and save payment record")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Payment confirmed successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "400", description = "Payment confirmation failed", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<PaymentResponseDTO>> confirmPayment(
-                        @Parameter(description = "Stripe payment intent ID") @PathVariable String paymentIntentId,
-                        @RequestBody Map<String, Object> paymentData) {
-                try {
-                        // Extract order ID from payment data or metadata
-                        Integer orderId = Integer.parseInt((String) paymentData.get("orderId"));
-
-                        Payment savedPayment = paymentService.savePaymentRecord(orderId, paymentIntentId, paymentData);
-                        PaymentResponseDTO responseData = convertToPaymentResponseDTO(savedPayment);
-
-                        return ResponseBase.ok(responseData, "Payment confirmed successfully");
-
-                } catch (Exception e) {
-                        return ResponseBase.error(HttpStatus.BAD_REQUEST,
-                                        "Payment confirmation failed: " + e.getMessage());
-                }
-        }
-
-        @GetMapping("/saved-payment-methods/{customerId}")
-        @Operation(summary = "Get saved payment methods", description = "Retrieve customer's saved payment methods")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Saved payment methods retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "400", description = "Failed to retrieve payment methods", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<List<SavedPaymentMethodDTO>>> getSavedPaymentMethods(
-                        @Parameter(description = "Customer ID") @PathVariable Integer customerId) {
-                try {
-                        List<PaymentMethod> paymentMethods = paymentService.getSavedPaymentMethods(customerId);
-
-                        List<SavedPaymentMethodDTO> responseData = paymentMethods.stream()
-                                        .map(this::convertToSavedPaymentMethodDTO)
-                                        .collect(Collectors.toList());
-
-                        return ResponseBase.ok(responseData, "Saved payment methods retrieved successfully");
-
-                } catch (Exception e) {
-                        return ResponseBase.error(HttpStatus.BAD_REQUEST,
-                                        "Failed to retrieve saved payment methods: " + e.getMessage());
-                }
-        }
-
-        @GetMapping("/history/{customerId}")
-        @Operation(summary = "Get payment history", description = "Retrieve customer's payment history")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Payment history retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "400", description = "Failed to retrieve payment history", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<List<PaymentResponseDTO>>> getPaymentHistory(
-                        @Parameter(description = "Customer ID") @PathVariable Integer customerId) {
-                try {
-                        List<Payment> payments = paymentService.getCustomerPaymentHistory(customerId);
-
-                        List<PaymentResponseDTO> responseData = payments.stream()
-                                        .map(this::convertToPaymentResponseDTO)
-                                        .collect(Collectors.toList());
-
-                        return ResponseBase.ok(responseData, "Payment history retrieved successfully");
-
-                } catch (Exception e) {
-                        return ResponseBase.error(HttpStatus.BAD_REQUEST,
-                                        "Failed to retrieve payment history: " + e.getMessage());
-                }
-        }
-
-        @DeleteMapping("/detach-payment-method/{paymentMethodId}")
-        @Operation(summary = "Remove saved payment method", description = "Detach a saved payment method from customer")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Payment method removed successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "400", description = "Failed to remove payment method", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<Void>> detachPaymentMethod(
-                        @Parameter(description = "Stripe payment method ID") @PathVariable String paymentMethodId) {
-                try {
-                        paymentService.detachPaymentMethod(paymentMethodId);
-                        return ResponseBase.ok(null, "Payment method removed successfully");
-                } catch (Exception e) {
-                        return ResponseBase.error(HttpStatus.BAD_REQUEST,
-                                        "Failed to remove payment method: " + e.getMessage());
-                }
-        }
-
-        @GetMapping("/order/{orderId}")
-        @Operation(summary = "Get payment by order", description = "Retrieve payment information for a specific order")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Payment information retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
-                        @ApiResponse(responseCode = "404", description = "Payment not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-        })
-        public ResponseEntity<ResponseBase<List<PaymentResponseDTO>>> getPaymentByOrderId(
-                        @Parameter(description = "Order ID") @PathVariable Integer orderId) {
-                try {
-                        List<Payment> payments = paymentService.getPaymentByOrderId(orderId);
-                        if (payments.isEmpty()) {
-                            throw new RuntimeException("Payment not found for order: " + orderId);
-                        }
-
-                        List<PaymentResponseDTO> responseData = payments.stream()
-                                    .map(this::convertToPaymentResponseDTO)
-                                    .collect(Collectors.toList());
-
-                        return ResponseBase.ok(responseData, "Payment information retrieved successfully");
-
-                } catch (Exception e) {
-                        return ResponseBase.error(HttpStatus.NOT_FOUND, "Payment not found: " + e.getMessage());
-                }
-        }
-
-        private PaymentResponseDTO convertToPaymentResponseDTO(Payment payment) {
-                String paymentStatus = payment.getPaymentStatus() != null ? payment.getPaymentStatus().name() : null;
-                return new PaymentResponseDTO(
-                                payment.getPaymentId(),
-                                payment.getOrder().getOrderId(),
-                                payment.getStripePaymentIntentId(),
-                                paymentStatus,
-                                payment.getAmount(),
-                                payment.getCurrency(),
-                                payment.getPaymentMethod(),
-                                payment.getProcessingFee(),
-                                payment.getNetAmount(),
-                                payment.getFailureReason(),
-                                payment.getCreatedAt(),
-                                payment.getProcessedAt());
-        }
-
-        private SavedPaymentMethodDTO convertToSavedPaymentMethodDTO(PaymentMethod paymentMethod) {
-                PaymentMethod.Card card = paymentMethod.getCard();
-                return new SavedPaymentMethodDTO(
-                                paymentMethod.getId(),
-                                card != null ? card.getBrand() : null,
-                                card != null ? card.getLast4() : null,
-                                card != null ? card.getExpMonth() : null,
-                                card != null ? card.getExpYear() : null,
-                                card != null ? card.getFingerprint() : null,
-                                false // Default flag, can be enhanced later
-                );
-        }
+    private PaymentResponseDTO convertToPaymentResponseDTO(Payment payment) {
+        String paymentStatus = payment.getPaymentStatus() != null ? payment.getPaymentStatus().name() : null;
+        return new PaymentResponseDTO(
+                payment.getPaymentId(),
+                payment.getOrder().getOrderId(),
+                payment.getGatewayTransactionId(),
+                payment.getPaymentGateway() != null ? payment.getPaymentGateway().name() : null,
+                paymentStatus,
+                payment.getAmount(),
+                payment.getCurrency(),
+                payment.getPaymentMethod(),
+                payment.getProcessingFee(),
+                payment.getNetAmount(),
+                payment.getFailureReason(),
+                payment.getCreatedAt(),
+                payment.getProcessedAt());
+    }
 }

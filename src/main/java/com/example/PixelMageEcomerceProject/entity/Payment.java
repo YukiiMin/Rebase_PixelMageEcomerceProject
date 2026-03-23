@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.entity;
 
+import com.example.PixelMageEcomerceProject.enums.PaymentGateway;
 import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
@@ -33,8 +34,12 @@ public class Payment {
     @JsonBackReference("order-payment")
     private Order order;
 
-    @Column(name = "stripe_payment_intent_id", length = 100)
-    private String stripePaymentIntentId;
+    @Column(name = "gateway_transaction_id", length = 100)
+    private String gatewayTransactionId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_gateway", length = 50)
+    private PaymentGateway paymentGateway;
 
     @Column(name = "stripe_customer_id", length = 100)
     private String stripeCustomerId;

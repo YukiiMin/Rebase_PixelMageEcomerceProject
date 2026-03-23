@@ -16,7 +16,8 @@ import java.time.LocalDateTime;
 public class PaymentResponseDTO {
     private Integer paymentId;
     private Integer orderId;
-    private String stripePaymentIntentId;
+    private String gatewayTransactionId;
+    private String paymentGateway;
     private String paymentStatus;
     private BigDecimal amount;
     private String currency;

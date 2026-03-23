@@ -58,49 +58,21 @@ public class SecurityConfig {
                             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized - Vui lòng cung cấp Token hợp lệ");
                         })
                 )
-                .authorizeHttpRequests(auth -> auth
-                        // Public endpoints - no authentication required
-                        .requestMatchers(
-                                "/api/accounts/auth/**",
-                                "/api/accounts/auth/google",
-                                "/error",            // <--- QUAN TRỌNG: Phải public endpoint lỗi mặc định của Spring
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/swagger-resources/**",
-                                "/webjars/**",
-                                "/api-docs/**",
-                                "/ws/**",
-                                "/ws/notifications/**",
-                                "/api/unlink-requests/verify" // TASK-05: email link click, no Bearer token
-                        ).permitAll()
+                        .authorizeHttpRequests(auth -> auth
+                                // 1. Public hoàn toàn
+                                .requestMatchers(
+                                        "/api/accounts/auth/**",
+                                        "/error",
+                                        "/v3/api-docs/**",
+                                        "/swagger-ui/**",
+                                        "/swagger-ui.html",
+                                        "/swagger-resources/**",
+                                        "/webjars/**",
+                                        "/ws/**",
+                                        "/api/unlink-requests/verify",
+                                        "/api/payments/webhook/**")
+                                .permitAll()
                         // Protected endpoints - JWT authentication required
-                        .requestMatchers(
-                                "/api/payments/**",
-                                "/api/accounts/**",
-                                "/api/orders/**",
-                                "/api/roles/**",
-                                "/api/suppliers/**",
-                                "/api/purchase-orders/**",
-                                "/api/warehouses/**",
-                                "/api/inventory/**",
-                                "/api/products/**",
-                                "/api/order-items/**",
-                                "/api/cards/**",
-                                "/api/card-price-tiers/**",
-                                "/api/card-templates/**",
-                                "/api/card-contents/**",
-                                "/api/collections/**",
-                                "/api/warehouse-transactions/**",
-                                "/api/v1/**",
-                                "/api/admin/collections/**",
-                                "/api/nfc/**",
-                                "/api/packs/**",
-                                "/api/stories/**",
-                                "/api/admin/stories/**",
-                                "/api/v1/readings/**",
-                                "/api/collections/progress/**"
-                        ).authenticated()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

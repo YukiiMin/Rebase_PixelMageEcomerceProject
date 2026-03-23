@@ -23,9 +23,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     List<Payment> findByOrder_OrderId(Integer orderId);
 
     /**
-     * Find payment by Stripe payment intent ID.
+     * Find payment by Gateway Transaction ID.
      */
-    Optional<Payment> findByStripePaymentIntentId(String stripePaymentIntentId);
+    Optional<Payment> findByGatewayTransactionId(String gatewayTransactionId);
 
     /**
      * Find payment by Stripe customer ID.
