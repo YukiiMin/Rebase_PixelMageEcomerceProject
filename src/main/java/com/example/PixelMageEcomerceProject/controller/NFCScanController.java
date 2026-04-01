@@ -30,9 +30,10 @@ public class NFCScanController {
     @PostMapping("/scan")
     @Operation(summary = "Scan NFC card", description = "Scan an NFC card and return action (LINK_PROMPT or VIEW_CONTENT)")
     public ResponseEntity<ResponseBase<Map<String, Object>>> scanNFC(@RequestParam String nfcUid,
+            @RequestParam String softwareUuid,
             @RequestParam Integer userId) {
         try {
-            Map<String, Object> result = nfcScanService.scanNFC(nfcUid, userId);
+            Map<String, Object> result = nfcScanService.scanNFC(nfcUid, softwareUuid, userId);
             return ResponseBase.ok(result, "Scan successful");
         } catch (RuntimeException e) {
             return ResponseBase.error(HttpStatus.BAD_REQUEST, e.getMessage());
@@ -42,9 +43,10 @@ public class NFCScanController {
     @PostMapping("/link")
     @Operation(summary = "Link NFC card", description = "Link a scanned NFC card to a user account")
     public ResponseEntity<ResponseBase<Map<String, Object>>> linkCard(@RequestParam String nfcUid,
+            @RequestParam String softwareUuid,
             @RequestParam Integer userId) {
         try {
-            Map<String, Object> result = nfcScanService.linkCard(nfcUid, userId);
+            Map<String, Object> result = nfcScanService.linkCard(nfcUid, softwareUuid, userId);
             return ResponseBase.ok(result, "Card linked successfully");
         } catch (RuntimeException e) {
             return ResponseBase.error(HttpStatus.BAD_REQUEST, e.getMessage());

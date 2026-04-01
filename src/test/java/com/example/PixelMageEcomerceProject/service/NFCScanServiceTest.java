@@ -53,9 +53,10 @@ class NFCScanServiceTest {
     void scanNFC_cardReady_returnsLinkPrompt() {
         Card card = new Card();
         card.setStatus(CardProductStatus.READY);
+        card.setSoftwareUuid("sw-uid-test");
         when(cardRepository.findByNfcUid("UID-123")).thenReturn(Optional.of(card));
 
-        Map<String, Object> result = nfcScanService.scanNFC("UID-123", 100);
+        Map<String, Object> result = nfcScanService.scanNFC("UID-123", "sw-uid-test", 100);
 
         assertThat(result.get("action")).isEqualTo("LINK_PROMPT");
     }
@@ -64,9 +65,10 @@ class NFCScanServiceTest {
     void scanNFC_cardSold_returnsLinkPrompt() {
         Card card = new Card();
         card.setStatus(CardProductStatus.SOLD);
+        card.setSoftwareUuid("sw-uid-test");
         when(cardRepository.findByNfcUid("UID-123")).thenReturn(Optional.of(card));
 
-        Map<String, Object> result = nfcScanService.scanNFC("UID-123", 100);
+        Map<String, Object> result = nfcScanService.scanNFC("UID-123", "sw-uid-test", 100);
 
         assertThat(result.get("action")).isEqualTo("LINK_PROMPT");
     }
@@ -75,12 +77,13 @@ class NFCScanServiceTest {
     void scanNFC_cardLinked_ownUser_returnsViewContent() {
         Card card = new Card();
         card.setStatus(CardProductStatus.LINKED);
+        card.setSoftwareUuid("sw-uid-test");
         Account owner = new Account();
         owner.setCustomerId(100);
         card.setOwner(owner);
         when(cardRepository.findByNfcUid("UID-123")).thenReturn(Optional.of(card));
 
-        Map<String, Object> result = nfcScanService.scanNFC("UID-123", 100);
+        Map<String, Object> result = nfcScanService.scanNFC("UID-123", "sw-uid-test", 100);
 
         assertThat(result.get("action")).isEqualTo("VIEW_CONTENT");
     }
@@ -89,21 +92,23 @@ class NFCScanServiceTest {
     void scanNFC_cardLinked_otherUser_throwsException() {
         Card card = new Card();
         card.setStatus(CardProductStatus.LINKED);
+        card.setSoftwareUuid("sw-uid-test");
         Account owner = new Account();
         owner.setCustomerId(999);
         card.setOwner(owner);
         when(cardRepository.findByNfcUid("UID-123")).thenReturn(Optional.of(card));
 
-        assertThrows(RuntimeException.class, () -> nfcScanService.scanNFC("UID-123", 100));
+        assertThrows(RuntimeException.class, () -> nfcScanService.scanNFC("UID-123", "sw-uid-test", 100));
     }
 
     @Test
     void scanNFC_cardPendingBind_throwsException() {
         Card card = new Card();
         card.setStatus(CardProductStatus.PENDING_BIND);
+        card.setSoftwareUuid("sw-uid-test");
         when(cardRepository.findByNfcUid("UID-123")).thenReturn(Optional.of(card));
 
-        assertThrows(RuntimeException.class, () -> nfcScanService.scanNFC("UID-123", 100));
+        assertThrows(RuntimeException.class, () -> nfcScanService.scanNFC("UID-123", "sw-uid-test", 100));
     }
 
     @Test
@@ -111,17 +116,18 @@ class NFCScanServiceTest {
         Card card = new Card();
         card.setCardId(1);
         card.setStatus(CardProductStatus.READY);
+        card.setSoftwareUuid("sw-uid-test");
         CardTemplate ct = new CardTemplate();
         ct.setCardTemplateId(5);
         ct.setName("The Fool");
         card.setCardTemplate(ct);
 
-        when(cardRepository.findByNfcUid("UID-123")).thenReturn(Optional.of(card));
+        when(cardRepository.findLockedByNfcUid("UID-123")).thenReturn(Optional.of(card));
         Account account = new Account();
         account.setCustomerId(100);
         when(accountRepository.findById(100)).thenReturn(Optional.of(account));
 
-        Map<String, Object> result = nfcScanService.linkCard("UID-123", 100);
+        Map<String, Object> result = nfcScanService.linkCard("UID-123", "sw-uid-test", 100);
 
         assertThat(result.get("message")).isEqualTo("Card linked successfully");
         assertThat(card.getStatus()).isEqualTo(CardProductStatus.LINKED);
@@ -133,9 +139,10 @@ class NFCScanServiceTest {
     void linkCard_cardNotLinkable_throwsException() {
         Card card = new Card();
         card.setStatus(CardProductStatus.LINKED);
-        when(cardRepository.findByNfcUid("UID-123")).thenReturn(Optional.of(card));
+        card.setSoftwareUuid("sw-uid-test");
+        when(cardRepository.findLockedByNfcUid("UID-123")).thenReturn(Optional.of(card));
 
-        assertThrows(RuntimeException.class, () -> nfcScanService.linkCard("UID-123", 100));
+        assertThrows(RuntimeException.class, () -> nfcScanService.linkCard("UID-123", "sw-uid-test", 100));
         verify(userInventoryService, never()).upsertInventory(anyInt(), anyInt(), anyInt());
     }
 
@@ -143,15 +150,16 @@ class NFCScanServiceTest {
     void linkCard_cardInActiveSession_throwsException() {
         Card card = new Card();
         card.setStatus(CardProductStatus.READY);
+        card.setSoftwareUuid("sw-uid-test");
         CardTemplate ct = new CardTemplate();
         ct.setCardTemplateId(5);
         card.setCardTemplate(ct);
 
-        when(cardRepository.findByNfcUid("UID-123")).thenReturn(Optional.of(card));
+        when(cardRepository.findLockedByNfcUid("UID-123")).thenReturn(Optional.of(card));
         when(readingCardRepository.existsByCardTemplate_CardTemplateIdAndReadingSession_StatusIn(
                 5, Arrays.asList("PENDING", "INTERPRETING"))).thenReturn(true);
 
-        assertThrows(CardLockedInSessionException.class, () -> nfcScanService.linkCard("UID-123", 100));
+        assertThrows(CardLockedInSessionException.class, () -> nfcScanService.linkCard("UID-123", "sw-uid-test", 100));
         verify(userInventoryService, never()).upsertInventory(anyInt(), anyInt(), anyInt());
     }
 
