@@ -4,6 +4,8 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+src/main/resources/db/migration/*
+
 ### STS ###
 .apt_generated
 .classpath
@@ -13,11 +15,14 @@ target/
 .springBeans
 .sts4-cache
 
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
 *.iml
 *.ipr
+
+script.py
 
 ### NetBeans ###
 /nbproject/private/

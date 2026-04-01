@@ -4,6 +4,7 @@ import com.example.PixelMageEcomerceProject.entity.Payment;
 import com.example.PixelMageEcomerceProject.enums.PaymentGateway;
 import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.example.PixelMageEcomerceProject.service.model.InitPaymentResult;
+import com.example.PixelMageEcomerceProject.dto.response.PaymentResponseDTO;
 
 import org.springframework.stereotype.Service;
 
@@ -33,7 +34,7 @@ public interface PaymentService {
     /**
      * Get payment by order ID.
      */
-    List<Payment> getPaymentByOrderId(Integer orderId);
+    List<PaymentResponseDTO> getPaymentByOrderId(Integer orderId);
 
     /**
      * Get payment by gateway transaction ID.
@@ -43,7 +44,7 @@ public interface PaymentService {
     /**
      * Get customer's payment history.
      */
-    List<Payment> getCustomerPaymentHistory(Integer customerId);
+    List<PaymentResponseDTO> getCustomerPaymentHistory(Integer customerId);
 
     /**
      * Calculate processing fee (for display purposes).

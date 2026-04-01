@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.request.AdminCollectionRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.response.CollectionResponse;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
-import com.example.PixelMageEcomerceProject.entity.CardCollection;
 import com.example.PixelMageEcomerceProject.service.interfaces.CollectionService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,11 +39,11 @@ public class AdminCollectionController {
                         @ApiResponse(responseCode = "201", description = "Admin collection created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<CardCollection>> createAdminCollection(
+        public ResponseEntity<ResponseBase<CollectionResponse>> createAdminCollection(
                         @RequestParam Integer adminId,
                         @RequestBody AdminCollectionRequestDTO request) {
                 try {
-                        CardCollection collection = collectionService.createAdminCollection(adminId, request);
+                        CollectionResponse collection = collectionService.createAdminCollection(adminId, request);
                         return ResponseBase.created(collection, "Admin collection created successfully");
                 } catch (Exception e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST,
@@ -57,11 +57,11 @@ public class AdminCollectionController {
                         @ApiResponse(responseCode = "200", description = "Collection visibility updated successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Collection not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<CardCollection>> updateVisibility(
+        public ResponseEntity<ResponseBase<CollectionResponse>> updateVisibility(
                         @PathVariable Integer id,
                         @RequestParam Boolean isVisible) {
                 try {
-                        CardCollection collection = collectionService.updateCollectionVisibility(id, isVisible);
+                        CollectionResponse collection = collectionService.updateCollectionVisibility(id, isVisible);
                         return ResponseBase.ok(collection, "Collection visibility updated successfully");
                 } catch (Exception e) {
                         return ResponseBase.error(HttpStatus.NOT_FOUND,

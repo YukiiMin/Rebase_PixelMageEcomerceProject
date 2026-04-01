@@ -45,6 +45,9 @@ public class Card {
     @Column(name = "nfc_uid", unique = true)
     private String nfcUid;
 
+    @Column(name = "software_uuid", unique = true)
+    private String softwareUuid;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "card_template_id", nullable = false, referencedColumnName = "card_template_id")
     @JsonBackReference("cardTemplate-cards")

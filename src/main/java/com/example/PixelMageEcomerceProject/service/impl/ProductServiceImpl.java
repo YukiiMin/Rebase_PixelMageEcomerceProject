@@ -1,10 +1,10 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
-import java.util.List;
-import java.util.Optional;
-
+import com.example.PixelMageEcomerceProject.dto.response.ProductResponse;
+import com.example.PixelMageEcomerceProject.mapper.ProductMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 
 import com.example.PixelMageEcomerceProject.dto.request.ProductRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Product;
@@ -19,33 +19,35 @@ import lombok.RequiredArgsConstructor;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductMapper productMapper;
 
     @Override
-    public Product createProduct(ProductRequestDTO productRequestDTO) {
+    public ProductResponse createProduct(ProductRequestDTO productRequestDTO) {
         Product product = new Product();
         product.setName(productRequestDTO.getName());
         product.setDescription(productRequestDTO.getDescription());
         product.setPrice(productRequestDTO.getPrice());
         product.setImageUrl(productRequestDTO.getImageUrl());
-        return productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
+        return productMapper.toProductResponse(savedProduct);
     }
 
     @Override
-    public Product updateProduct(Integer id, ProductRequestDTO productRequestDTO) {
-        Optional<Product> existingProduct = productRepository.findById(id);
-        if (existingProduct.isPresent()) {
-            Product updatedProduct = existingProduct.get();
-            if (productRequestDTO.getName() != null)
-                updatedProduct.setName(productRequestDTO.getName());
-            if (productRequestDTO.getDescription() != null)
-                updatedProduct.setDescription(productRequestDTO.getDescription());
-            if (productRequestDTO.getPrice() != null)
-                updatedProduct.setPrice(productRequestDTO.getPrice());
-            if (productRequestDTO.getImageUrl() != null)
-                updatedProduct.setImageUrl(productRequestDTO.getImageUrl());
-            return productRepository.save(updatedProduct);
-        }
-        throw new RuntimeException("Product not found with id: " + id);
+    public ProductResponse updateProduct(Integer id, ProductRequestDTO productRequestDTO) {
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
+
+        if (productRequestDTO.getName() != null)
+            existingProduct.setName(productRequestDTO.getName());
+        if (productRequestDTO.getDescription() != null)
+            existingProduct.setDescription(productRequestDTO.getDescription());
+        if (productRequestDTO.getPrice() != null)
+            existingProduct.setPrice(productRequestDTO.getPrice());
+        if (productRequestDTO.getImageUrl() != null)
+            existingProduct.setImageUrl(productRequestDTO.getImageUrl());
+            
+        Product updatedProduct = productRepository.save(existingProduct);
+        return productMapper.toProductResponse(updatedProduct);
     }
 
     @Override
@@ -57,17 +59,23 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Optional<Product> getProductById(Integer id) {
-        return productRepository.findById(id);
+    public ProductResponse getProductById(Integer id) {
+        return productRepository.findById(id)
+                .map(productMapper::toProductResponse)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
     }
 
     @Override
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public List<ProductResponse> getAllProducts() {
+        return productRepository.findAll().stream()
+                .map(productMapper::toProductResponse)
+                .toList();
     }
 
     @Override
-    public Optional<Product> getProductByName(String name) {
-        return productRepository.findByName(name);
+    public ProductResponse getProductByName(String name) {
+        return productRepository.findByName(name)
+                .map(productMapper::toProductResponse)
+                .orElseThrow(() -> new RuntimeException("Product not found with name: " + name));
     }
 }

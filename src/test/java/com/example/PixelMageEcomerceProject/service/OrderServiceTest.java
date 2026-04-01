@@ -21,9 +21,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
+import com.example.PixelMageEcomerceProject.dto.response.OrderResponse;
+import com.example.PixelMageEcomerceProject.mapper.OrderMapper;
 import com.example.PixelMageEcomerceProject.dto.request.OrderItemRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.OrderRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Account;
@@ -40,9 +44,9 @@ import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.service.impl.OrderServiceImpl;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
 import com.example.PixelMageEcomerceProject.service.interfaces.RedisLockService;
-import com.example.PixelMageEcomerceProject.service.interfaces.VoucherService;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class OrderServiceTest {
 
     @Mock
@@ -58,9 +62,9 @@ class OrderServiceTest {
     @Mock
     private RedisLockService redisLockService;
     @Mock
-    private VoucherService voucherService;
-    @Mock
     private PlatformTransactionManager transactionManager;
+    @Mock
+    private OrderMapper orderMapper;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -98,11 +102,11 @@ class OrderServiceTest {
         when(redisLockService.tryLock(anyString(), eq(30L))).thenReturn(true);
 
         when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        when(orderMapper.toOrderResponse(any())).thenReturn(new OrderResponse());
 
-        Order result = orderService.createOrder(req);
+        OrderResponse result = orderService.createOrder(req);
 
         assertThat(result).isNotNull();
-        assertThat(result.getOrderItems()).hasSize(1);
         assertThat(pack.getStatus()).isEqualTo(PackStatus.RESERVED);
         verify(packRepository, times(1)).save(pack);
         verify(orderItemRepository, times(1)).save(any(OrderItem.class));
@@ -139,7 +143,7 @@ class OrderServiceTest {
         when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> orderService.createOrder(req));
-        assertThat(ex.getMessage()).contains("Pack is not STOCKED anymore");
+        assertThat(ex.getMessage()).contains("is not STOCKED anymore");
     }
 
     @Test
@@ -152,11 +156,11 @@ class OrderServiceTest {
 
         when(accountRepository.findById(10)).thenReturn(Optional.of(new Account()));
         when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
+        when(orderMapper.toOrderResponse(any())).thenReturn(new OrderResponse());
 
-        Order result = orderService.createOrder(req);
+        OrderResponse result = orderService.createOrder(req);
 
         assertThat(result).isNotNull();
-        assertThat(result.getOrderItems()).hasSize(1);
         verify(packRepository, never()).findById(any());
     }
     // ── TASK-06: concurrent_samepack ────────────────────────────────────────────

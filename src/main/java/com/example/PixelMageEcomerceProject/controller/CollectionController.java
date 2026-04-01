@@ -15,10 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.request.CollectionItemRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.CollectionRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.response.CollectionItemResponse;
+import com.example.PixelMageEcomerceProject.dto.response.CollectionResponse;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
 import com.example.PixelMageEcomerceProject.entity.Card;
-import com.example.PixelMageEcomerceProject.entity.CardCollection;
-import com.example.PixelMageEcomerceProject.entity.CollectionItem;
 import com.example.PixelMageEcomerceProject.service.interfaces.CollectionService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,11 +48,11 @@ public class CollectionController {
                         @ApiResponse(responseCode = "201", description = "Collection created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<CardCollection>> createCollection(
+        public ResponseEntity<ResponseBase<CollectionResponse>> createCollection(
                         @Parameter(description = "Customer ID") @PathVariable Integer customerId,
                         @RequestBody CollectionRequestDTO request) {
                 try {
-                        CardCollection collection = collectionService.createCollection(customerId, request);
+                        CollectionResponse collection = collectionService.createCollection(customerId, request);
                         return ResponseBase.created(collection, "Collection created successfully");
                 } catch (Exception e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST,
@@ -66,12 +66,12 @@ public class CollectionController {
                         @ApiResponse(responseCode = "200", description = "Collection updated successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Collection not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<CardCollection>> updateCollection(
+        public ResponseEntity<ResponseBase<CollectionResponse>> updateCollection(
                         @Parameter(description = "Customer ID") @PathVariable Integer customerId,
                         @Parameter(description = "Collection ID") @PathVariable Integer collectionId,
                         @RequestBody CollectionRequestDTO request) {
                 try {
-                        CardCollection collection = collectionService.updateCollection(customerId, collectionId,
+                        CollectionResponse collection = collectionService.updateCollection(customerId, collectionId,
                                         request);
                         return ResponseBase.ok(collection, "Collection updated successfully");
                 } catch (Exception e) {
@@ -104,7 +104,7 @@ public class CollectionController {
                         @ApiResponse(responseCode = "200", description = "Collection found", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Collection not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<CardCollection>> getCollectionById(
+        public ResponseEntity<ResponseBase<CollectionResponse>> getCollectionById(
                         @Parameter(description = "Collection ID") @PathVariable Integer collectionId) {
                 return collectionService.getCollectionById(collectionId)
                                 .map(collection -> ResponseBase.ok(collection, "Collection retrieved successfully"))
@@ -117,9 +117,9 @@ public class CollectionController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Collections retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<CardCollection>>> getCollectionsByCustomerId(
+        public ResponseEntity<ResponseBase<List<CollectionResponse>>> getCollectionsByCustomerId(
                         @Parameter(description = "Customer ID") @PathVariable Integer customerId) {
-                List<CardCollection> collections = collectionService.getCollectionsByCustomerId(customerId);
+                List<CollectionResponse> collections = collectionService.getCollectionsByCustomerId(customerId);
                 return ResponseBase.ok(collections, "Collections retrieved successfully");
         }
 
@@ -128,24 +128,24 @@ public class CollectionController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Public collections retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<CardCollection>>> getPublicCollections() {
-                List<CardCollection> collections = collectionService.getPublicCollections();
+        public ResponseEntity<ResponseBase<List<CollectionResponse>>> getPublicCollections() {
+                List<CollectionResponse> collections = collectionService.getPublicCollections();
                 return ResponseBase.ok(collections, "Public collections retrieved successfully");
         }
 
         // ==================== Collection Items ====================
 
         @PostMapping("/items/{customerId}")
-        @Operation(summary = "Add card to collection", description = "Add an owned card to a collection. Card must be purchased (order COMPLETED & PAID) before adding.")
+        @Operation(summary = "Add card to collection", description = "Add an owned card to a collection.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "201", description = "Card added to collection successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Card not owned or already in collection", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<CollectionItem>> addCardToCollection(
+        public ResponseEntity<ResponseBase<CollectionItemResponse>> addCardToCollection(
                         @Parameter(description = "Customer ID") @PathVariable Integer customerId,
                         @RequestBody CollectionItemRequestDTO request) {
                 try {
-                        CollectionItem item = collectionService.addCardToCollection(customerId, request);
+                        CollectionItemResponse item = collectionService.addCardToCollection(customerId, request);
                         return ResponseBase.created(item, "Card added to collection successfully");
                 } catch (Exception e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST,
@@ -176,9 +176,9 @@ public class CollectionController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Collection items retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<CollectionItem>>> getCollectionItems(
+        public ResponseEntity<ResponseBase<List<CollectionItemResponse>>> getCollectionItems(
                         @Parameter(description = "Collection ID") @PathVariable Integer collectionId) {
-                List<CollectionItem> items = collectionService.getCollectionItems(collectionId);
+                List<CollectionItemResponse> items = collectionService.getCollectionItems(collectionId);
                 return ResponseBase.ok(items, "Collection items retrieved successfully");
         }
 

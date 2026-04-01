@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.request.OrderRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.response.OrderResponse;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
-import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.enums.OrderStatus;
 import com.example.PixelMageEcomerceProject.service.interfaces.OrderService;
 
@@ -43,9 +43,9 @@ public class OrderController {
                         @ApiResponse(responseCode = "201", description = "Order created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Order>> createOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
+        public ResponseEntity<ResponseBase<OrderResponse>> createOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
                 try {
-                        Order createdOrder = orderService.createOrder(orderRequestDTO);
+                        OrderResponse createdOrder = orderService.createOrder(orderRequestDTO);
                         return ResponseBase.created(createdOrder, "Order created successfully");
                 } catch (Exception e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST, "Failed to create order: " + e.getMessage());
@@ -57,8 +57,8 @@ public class OrderController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Orders retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<Order>>> getAllOrders() {
-                List<Order> orders = orderService.getAllOrders();
+        public ResponseEntity<ResponseBase<List<OrderResponse>>> getAllOrders() {
+                List<OrderResponse> orders = orderService.getAllOrders();
                 return ResponseBase.ok(orders, "Orders retrieved successfully");
         }
 
@@ -68,11 +68,12 @@ public class OrderController {
                         @ApiResponse(responseCode = "200", description = "Order found", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Order>> getOrderById(@PathVariable Integer id) {
-                return orderService.getOrderById(id)
-                                .map(order -> ResponseBase.ok(order, "Order found"))
-                                .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND,
-                                                "Order not found with id: " + id));
+        public ResponseEntity<ResponseBase<OrderResponse>> getOrderById(@PathVariable Integer id) {
+                OrderResponse order = orderService.getOrderById(id);
+                if (order != null) {
+                    return ResponseBase.ok(order, "Order found");
+                }
+                return ResponseBase.error(HttpStatus.NOT_FOUND, "Order not found with id: " + id);
         }
 
         @GetMapping("/customer/{customerId}")
@@ -80,8 +81,8 @@ public class OrderController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<Order>>> getOrdersByCustomerId(@PathVariable Integer customerId) {
-                List<Order> orders = orderService.getOrdersByCustomerId(customerId);
+        public ResponseEntity<ResponseBase<List<OrderResponse>>> getOrdersByCustomerId(@PathVariable Integer customerId) {
+                List<OrderResponse> orders = orderService.getOrdersByCustomerId(customerId);
                 return ResponseBase.ok(orders, "Orders retrieved successfully");
         }
 
@@ -90,8 +91,8 @@ public class OrderController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<Order>>> getOrdersByStatus(@PathVariable OrderStatus status) {
-                List<Order> orders = orderService.getOrdersByStatus(status);
+        public ResponseEntity<ResponseBase<List<OrderResponse>>> getOrdersByStatus(@PathVariable OrderStatus status) {
+                List<OrderResponse> orders = orderService.getOrdersByStatus(status);
                 return ResponseBase.ok(orders, "Orders retrieved successfully");
         }
 
@@ -101,10 +102,10 @@ public class OrderController {
                         @ApiResponse(responseCode = "200", description = "Order updated successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Order>> updateOrder(@PathVariable Integer id,
+        public ResponseEntity<ResponseBase<OrderResponse>> updateOrder(@PathVariable Integer id,
                         @RequestBody OrderRequestDTO orderRequestDTO) {
                 try {
-                        Order updatedOrder = orderService.updateOrder(id, orderRequestDTO);
+                        OrderResponse updatedOrder = orderService.updateOrder(id, orderRequestDTO);
                         return ResponseBase.ok(updatedOrder, "Order updated successfully");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
@@ -132,9 +133,9 @@ public class OrderController {
                         @ApiResponse(responseCode = "200", description = "Order cancelled successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Order>> cancelOrder(@PathVariable Integer id) {
+        public ResponseEntity<ResponseBase<OrderResponse>> cancelOrder(@PathVariable Integer id) {
                 try {
-                        Order cancelledOrder = orderService.cancelOrder(id);
+                        OrderResponse cancelledOrder = orderService.cancelOrder(id);
                         return ResponseBase.ok(cancelledOrder, "Order cancelled successfully");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.NOT_FOUND, "Failed to cancel order: " + e.getMessage());

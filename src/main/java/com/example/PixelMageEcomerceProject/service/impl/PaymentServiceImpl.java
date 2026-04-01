@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,8 @@ import com.example.PixelMageEcomerceProject.service.interfaces.PaymentGatewayStr
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
 import com.example.PixelMageEcomerceProject.service.model.InitPaymentResult;
 import com.example.PixelMageEcomerceProject.service.model.PaymentStrategyRequest;
+import com.example.PixelMageEcomerceProject.dto.response.PaymentResponseDTO;
+import com.example.PixelMageEcomerceProject.mapper.PaymentMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +37,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final OrderRepository orderRepository;
     @Qualifier("sepay")
     private final PaymentGatewayStrategy activeGateway;
+    private final PaymentMapper paymentMapper;
 
     // // PaymentServiceImpl.java
     // public PaymentServiceImpl(PaymentRepository paymentRepository,
@@ -69,8 +73,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setOrder(order);
         payment.setAmount(amount);
         payment.setCurrency(currency);
-        payment.setPaymentGateway(
-                PaymentGateway.valueOf(activeGateway.getClass().getSimpleName().replace("Gateway", "").toUpperCase()));
+        payment.setPaymentGateway(activeGateway.getGatewayType());
         payment.setGatewayTransactionId(result.getGatewayTransactionId());
         payment.setPaymentStatus(PaymentStatus.PENDING);
 
@@ -115,8 +118,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public List<Payment> getPaymentByOrderId(Integer orderId) {
-        return paymentRepository.findByOrder_OrderId(orderId);
+    public List<PaymentResponseDTO> getPaymentByOrderId(Integer orderId) {
+        return paymentRepository.findByOrder_OrderId(orderId).stream()
+                .map(paymentMapper::toPaymentResponseDTO)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -125,8 +130,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public List<Payment> getCustomerPaymentHistory(Integer customerId) {
-        return paymentRepository.findByCustomerId(customerId);
+    public List<PaymentResponseDTO> getCustomerPaymentHistory(Integer customerId) {
+        return paymentRepository.findByCustomerId(customerId).stream()
+                .map(paymentMapper::toPaymentResponseDTO)
+                .collect(Collectors.toList());
     }
 
     @Override

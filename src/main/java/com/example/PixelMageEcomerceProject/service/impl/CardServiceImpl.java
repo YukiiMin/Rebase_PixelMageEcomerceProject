@@ -58,6 +58,7 @@ public class CardServiceImpl implements CardService {
         }
 
         card.setNfcUid(nfcUid);
+        card.setSoftwareUuid(java.util.UUID.randomUUID().toString());
         card.setStatus(CardProductStatus.READY);
         return cardRepository.save(card);
     }

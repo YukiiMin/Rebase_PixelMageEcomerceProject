@@ -14,6 +14,8 @@ import com.example.PixelMageEcomerceProject.entity.Voucher;
 import com.example.PixelMageEcomerceProject.repository.VoucherRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.VoucherService;
 
+import com.example.PixelMageEcomerceProject.mapper.VoucherMapper;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class VoucherServiceImpl implements VoucherService {
 
     private final VoucherRepository voucherRepository;
+    private final VoucherMapper voucherMapper;
 
     @Override
     public Voucher createVoucher(Integer userId) {
@@ -90,7 +93,7 @@ public class VoucherServiceImpl implements VoucherService {
     public List<VoucherResponse> getMyVouchers(Integer userId) {
         List<Voucher> vouchers = voucherRepository.findByOwnerIdAndIsUsedFalseAndExpiresAtAfter(userId, LocalDateTime.now());
         return vouchers.stream()
-                .map(v -> new VoucherResponse(v.getCode(), v.getDiscountPct(), v.getMaxDiscountVnd(), v.getExpiresAt(), v.getIsUsed()))
+                .map(voucherMapper::toVoucherResponse)
                 .collect(Collectors.toList());
     }
 }

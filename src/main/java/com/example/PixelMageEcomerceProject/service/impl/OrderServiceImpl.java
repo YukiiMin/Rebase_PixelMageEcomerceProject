@@ -17,6 +17,8 @@ import com.example.PixelMageEcomerceProject.event.PaymentSuccessEvent;
 
 import com.example.PixelMageEcomerceProject.dto.request.OrderItemRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.OrderRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.response.OrderResponse;
+import com.example.PixelMageEcomerceProject.mapper.OrderMapper;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.OrderItem;
@@ -51,9 +53,10 @@ public class OrderServiceImpl implements OrderService {
     private final RedisLockService redisLockService;
     private final VoucherService voucherService;
     private final PlatformTransactionManager transactionManager;
+    private final OrderMapper orderMapper;
 
     @Override
-    public Order createOrder(OrderRequestDTO orderRequestDTO) {
+    public OrderResponse createOrder(OrderRequestDTO orderRequestDTO) {
         Account account = accountRepository.findById(orderRequestDTO.getCustomerId())
                 .orElseThrow(
                         () -> new RuntimeException("Account not found with id: " + orderRequestDTO.getCustomerId()));
@@ -133,7 +136,7 @@ public class OrderServiceImpl implements OrderService {
                     }
                     savedOrder.setOrderItems(items);
                 }
-                return savedOrder;
+                return orderMapper.toOrderResponse(savedOrder);
             });
 
         } finally {
@@ -147,7 +150,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Map<String, Object> createOrderWithPayment(OrderRequestDTO orderRequestDTO, String currency) {
         // First create the order
-        Order createdOrder = createOrder(orderRequestDTO);
+        OrderResponse createdOrder = createOrder(orderRequestDTO);
 
         // Then initialize payment using the active gateway
         com.example.PixelMageEcomerceProject.service.model.InitPaymentResult paymentResult = paymentService
@@ -166,7 +169,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public Order updateOrder(Integer id, OrderRequestDTO orderRequestDTO) {
+    public OrderResponse updateOrder(Integer id, OrderRequestDTO orderRequestDTO) {
         Optional<Order> existingOrder = orderRepository.findById(id);
         if (existingOrder.isPresent()) {
             Order updatedOrder = existingOrder.get();
@@ -211,7 +214,7 @@ public class OrderServiceImpl implements OrderService {
             if (orderRequestDTO.getNotes() != null) {
                 updatedOrder.setNotes(orderRequestDTO.getNotes());
             }
-            return orderRepository.save(updatedOrder);
+            return orderMapper.toOrderResponse(orderRepository.save(updatedOrder));
         }
         throw new RuntimeException("Order not found with id: " + id);
     }
@@ -227,7 +230,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public Order cancelOrder(Integer id) {
+    public OrderResponse cancelOrder(Integer id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
 
@@ -242,27 +245,27 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
-        return orderRepository.save(order);
+        return orderMapper.toOrderResponse(orderRepository.save(order));
     }
 
     @Override
-    public Optional<Order> getOrderById(Integer id) {
-        return orderRepository.findById(id);
+    public OrderResponse getOrderById(Integer id) {
+        return orderRepository.findById(id).map(orderMapper::toOrderResponse).orElse(null);
     }
 
     @Override
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+    public List<OrderResponse> getAllOrders() {
+        return orderRepository.findAll().stream().map(orderMapper::toOrderResponse).toList();
     }
 
     @Override
-    public List<Order> getOrdersByCustomerId(Integer customerId) {
-        return orderRepository.findByAccountCustomerId(customerId);
+    public List<OrderResponse> getOrdersByCustomerId(Integer customerId) {
+        return orderRepository.findByAccountCustomerId(customerId).stream().map(orderMapper::toOrderResponse).toList();
     }
 
     @Override
-    public List<Order> getOrdersByStatus(OrderStatus status) {
-        return orderRepository.findByStatus(status);
+    public List<OrderResponse> getOrdersByStatus(OrderStatus status) {
+        return orderRepository.findByStatus(status).stream().map(orderMapper::toOrderResponse).toList();
     }
 
     @EventListener

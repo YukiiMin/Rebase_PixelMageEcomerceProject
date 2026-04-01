@@ -3,9 +3,9 @@ package com.example.PixelMageEcomerceProject.service.interfaces;
 import com.example.PixelMageEcomerceProject.dto.request.CollectionItemRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.CollectionRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.AdminCollectionRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.response.CollectionResponse;
+import com.example.PixelMageEcomerceProject.dto.response.CollectionItemResponse;
 import com.example.PixelMageEcomerceProject.entity.Card;
-import com.example.PixelMageEcomerceProject.entity.CardCollection;
-import com.example.PixelMageEcomerceProject.entity.CollectionItem;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,21 +15,21 @@ import java.util.Optional;
 public interface CollectionService {
 
     // Collection CRUD (user-owned)
-    CardCollection createCollection(Integer customerId, CollectionRequestDTO request);
-    CardCollection updateCollection(Integer customerId, Integer collectionId, CollectionRequestDTO request);
+    CollectionResponse createCollection(Integer customerId, CollectionRequestDTO request);
+    CollectionResponse updateCollection(Integer customerId, Integer collectionId, CollectionRequestDTO request);
     void deleteCollection(Integer customerId, Integer collectionId);
-    Optional<CardCollection> getCollectionById(Integer collectionId);
-    List<CardCollection> getCollectionsByCustomerId(Integer customerId);
-    List<CardCollection> getPublicCollections();
+    Optional<CollectionResponse> getCollectionById(Integer collectionId);
+    List<CollectionResponse> getCollectionsByCustomerId(Integer customerId);
+    List<CollectionResponse> getPublicCollections();
 
     // Admin-controlled collections
-    CardCollection createAdminCollection(Integer adminId, AdminCollectionRequestDTO request);
-    CardCollection updateCollectionVisibility(Integer collectionId, Boolean isVisible);
+    CollectionResponse createAdminCollection(Integer adminId, AdminCollectionRequestDTO request);
+    CollectionResponse updateCollectionVisibility(Integer collectionId, Boolean isVisible);
 
     // Collection Items
-    CollectionItem addCardToCollection(Integer customerId, CollectionItemRequestDTO request);
+    CollectionItemResponse addCardToCollection(Integer customerId, CollectionItemRequestDTO request);
     void removeCardFromCollection(Integer customerId, Integer collectionId, Integer cardId);
-    List<CollectionItem> getCollectionItems(Integer collectionId);
+    List<CollectionItemResponse> getCollectionItems(Integer collectionId);
 
     // Owned cards (purchased cards that can be added to collection)
     List<Card> getOwnedCards(Integer customerId);

@@ -36,9 +36,13 @@ public class NFCScanServiceImpl implements NFCScanService {
     private final AchievementService achievementService;
 
     @Override
-    public Map<String, Object> scanNFC(String nfcUid, Integer userId) {
+    public Map<String, Object> scanNFC(String nfcUid, String softwareUuid, Integer userId) {
         Card card = cardRepository.findByNfcUid(nfcUid)
                 .orElseThrow(() -> new RuntimeException("Card not found"));
+
+        if (card.getSoftwareUuid() == null || !card.getSoftwareUuid().equals(softwareUuid)) {
+            throw new RuntimeException("Card validation failed: Anti-cloning check rejected the card.");
+        }
 
         Map<String, Object> response = new HashMap<>();
 
@@ -68,9 +72,13 @@ public class NFCScanServiceImpl implements NFCScanService {
     }
 
     @Override
-    public Map<String, Object> linkCard(String nfcUid, Integer userId) {
-        Card card = cardRepository.findByNfcUid(nfcUid)
+    public Map<String, Object> linkCard(String nfcUid, String softwareUuid, Integer userId) {
+        Card card = cardRepository.findLockedByNfcUid(nfcUid)
                 .orElseThrow(() -> new RuntimeException("Card not found"));
+
+        if (card.getSoftwareUuid() == null || !card.getSoftwareUuid().equals(softwareUuid)) {
+            throw new RuntimeException("Card validation failed: Anti-cloning check rejected the card.");
+        }
 
         if (card.getCardTemplate() != null) {
             boolean isInActiveSession = readingCardRepository

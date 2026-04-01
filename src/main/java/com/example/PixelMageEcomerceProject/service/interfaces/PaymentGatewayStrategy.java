@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.service.interfaces;
 
+import com.example.PixelMageEcomerceProject.enums.PaymentGateway;
 import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.example.PixelMageEcomerceProject.service.model.InitPaymentResult;
 import com.example.PixelMageEcomerceProject.service.model.PaymentStrategyRequest;
@@ -13,7 +14,12 @@ import java.util.Map;
  */
 public interface PaymentGatewayStrategy {
     InitPaymentResult initPayment(PaymentStrategyRequest request);
+
     WebhookResult handleWebhook(Map<String, String> payload);
+
     boolean verifySignature(Map<String, String> payload);
+
     PaymentStatus pollStatus(String gatewayTransactionId);
+
+    PaymentGateway getGatewayType();
 }

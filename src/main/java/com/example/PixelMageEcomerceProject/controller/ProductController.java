@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.request.ProductRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.response.ProductResponse;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
-import com.example.PixelMageEcomerceProject.entity.Product;
 import com.example.PixelMageEcomerceProject.service.interfaces.ProductService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,9 +42,9 @@ public class ProductController {
                         @ApiResponse(responseCode = "201", description = "Product created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Product>> createProduct(@RequestBody ProductRequestDTO productRequestDTO) {
+        public ResponseEntity<ResponseBase<ProductResponse>> createProduct(@RequestBody ProductRequestDTO productRequestDTO) {
                 try {
-                        Product createdProduct = productService.createProduct(productRequestDTO);
+                        ProductResponse createdProduct = productService.createProduct(productRequestDTO);
                         return ResponseBase.created(createdProduct, "Product created successfully");
                 } catch (Exception e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST,
@@ -57,8 +57,8 @@ public class ProductController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Products retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<Product>>> getAllProducts() {
-                List<Product> products = productService.getAllProducts();
+        public ResponseEntity<ResponseBase<List<ProductResponse>>> getAllProducts() {
+                List<ProductResponse> products = productService.getAllProducts();
                 return ResponseBase.ok(products, "Products retrieved successfully");
         }
 
@@ -68,11 +68,13 @@ public class ProductController {
                         @ApiResponse(responseCode = "200", description = "Product found", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Product not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Product>> getProductById(@PathVariable Integer id) {
-                return productService.getProductById(id)
-                                .map(product -> ResponseBase.ok(product, "Product found"))
-                                .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND,
-                                                "Product not found with id: " + id));
+        public ResponseEntity<ResponseBase<ProductResponse>> getProductById(@PathVariable Integer id) {
+                try {
+                        ProductResponse product = productService.getProductById(id);
+                        return ResponseBase.ok(product, "Product found");
+                } catch (RuntimeException e) {
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, "Product not found with id: " + id);
+                }
         }
 
         @PutMapping("/{id}")
@@ -81,10 +83,10 @@ public class ProductController {
                         @ApiResponse(responseCode = "200", description = "Product updated successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Product not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Product>> updateProduct(@PathVariable Integer id,
+        public ResponseEntity<ResponseBase<ProductResponse>> updateProduct(@PathVariable Integer id,
                         @RequestBody ProductRequestDTO productRequestDTO) {
                 try {
-                        Product updatedProduct = productService.updateProduct(id, productRequestDTO);
+                        ProductResponse updatedProduct = productService.updateProduct(id, productRequestDTO);
                         return ResponseBase.ok(updatedProduct, "Product updated successfully");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());

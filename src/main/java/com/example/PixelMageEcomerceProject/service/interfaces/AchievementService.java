@@ -3,6 +3,7 @@ package com.example.PixelMageEcomerceProject.service.interfaces;
 import java.util.List;
 
 import com.example.PixelMageEcomerceProject.dto.response.AchievementResponse;
+import com.example.PixelMageEcomerceProject.dto.response.UserAchievementResponse;
 
 /**
  * AchievementService — Stub Architecture for Sprint 2.4.
@@ -32,5 +33,5 @@ public interface AchievementService {
      * GET /api/achievements/my — only earned (isActive=true) achievements for user,
      * including hidden ones.
      */
-    List<AchievementResponse> getMyAchievements(Integer userId);
+    List<UserAchievementResponse> getMyAchievements(Integer userId);
 }

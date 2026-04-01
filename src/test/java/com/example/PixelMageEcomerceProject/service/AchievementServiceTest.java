@@ -16,9 +16,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.example.PixelMageEcomerceProject.dto.response.AchievementResponse;
+import com.example.PixelMageEcomerceProject.dto.response.UserAchievementResponse;
 import com.example.PixelMageEcomerceProject.entity.Achievement;
 import com.example.PixelMageEcomerceProject.entity.UserAchievement;
 import com.example.PixelMageEcomerceProject.enums.AchievementConditionType;
+import com.example.PixelMageEcomerceProject.mapper.AchievementMapper;
 import com.example.PixelMageEcomerceProject.repository.AchievementRepository;
 import com.example.PixelMageEcomerceProject.repository.UserAchievementRepository;
 import com.example.PixelMageEcomerceProject.repository.UserCollectionProgressRepository;
@@ -38,6 +40,7 @@ class AchievementServiceTest {
     @Mock private UserInventoryRepository userInventoryRepository;
     @Mock private UserCollectionProgressRepository userCollectionProgressRepository;
     @Mock PmPointWalletService pmPointWalletService;
+    @Mock private AchievementMapper achievementMapper;
 
     @InjectMocks
     private AchievementServiceImpl achievementService;
@@ -165,12 +168,20 @@ class AchievementServiceTest {
         // hiddenCollectionAchievement: not earned either
         when(userAchievementRepository.existsByUserIdAndAchievement_IdAndIsActiveTrue(100, 3L)).thenReturn(false);
 
+        AchievementResponse mockResponse1 = new AchievementResponse();
+        mockResponse1.setId(1L);
+        when(achievementMapper.toAchievementResponse(any(Achievement.class))).thenAnswer(invocation -> {
+            Achievement arg = invocation.getArgument(0);
+            if (arg.getId() == 1L) return mockResponse1;
+            return new AchievementResponse();
+        });
+
         List<AchievementResponse> result = achievementService.getAllAchievements(100);
 
         // Only the non-hidden unearned achievement is shown; hidden + unearned must be absent
         assertNotNull(result);
-        assert result.stream().noneMatch(r -> r.getId().equals(3L)) : "Hidden unearned should not appear";
-        assert result.stream().anyMatch(r -> r.getId().equals(1L)) : "Non-hidden should appear";
+        assert result.stream().noneMatch(r -> r.getId() != null && r.getId().equals(3L)) : "Hidden unearned should not appear";
+        assert result.stream().anyMatch(r -> r.getId() != null && r.getId().equals(1L)) : "Non-hidden should appear";
     }
 
     /**
@@ -184,15 +195,20 @@ class AchievementServiceTest {
         earnedHidden.setAchievement(hiddenCollectionAchievement);
         earnedHidden.setIsActive(true);
 
+        UserAchievementResponse mockMappedResponse = new UserAchievementResponse();
+        mockMappedResponse.setAchievementId(3);
+        mockMappedResponse.setEarned(true);
+
         when(userAchievementRepository.findByUserIdAndIsActiveTrue(100))
                 .thenReturn(List.of(earnedHidden));
+        when(achievementMapper.toUserAchievementResponse(any(UserAchievement.class))).thenReturn(mockMappedResponse);
 
-        List<AchievementResponse> result = achievementService.getMyAchievements(100);
+        List<UserAchievementResponse> result = achievementService.getMyAchievements(100);
 
         assertNotNull(result);
         assert !result.isEmpty() : "Earned hidden should appear in /my";
-        assert result.get(0).getId().equals(3L) : "Should be the hidden achievement";
-        assert Boolean.TRUE.equals(result.get(0).getIsEarned());
+        assert result.get(0).getAchievementId().equals(3) : "Should be the hidden achievement";
+        assert Boolean.TRUE.equals(result.get(0).getEarned());
     }
 
     // Helper to make argThat more readable

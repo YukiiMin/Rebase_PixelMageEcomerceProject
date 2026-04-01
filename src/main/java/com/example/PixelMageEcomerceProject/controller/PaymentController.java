@@ -4,7 +4,6 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +39,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.example.PixelMageEcomerceProject.mapper.PaymentMapper;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -51,6 +51,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final Map<String, PaymentGatewayStrategy> strategies;
+    private final PaymentMapper paymentMapper;
 
     @PostMapping("/initiate")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
@@ -96,7 +97,7 @@ public class PaymentController {
             Payment savedPayment = paymentService.savePaymentRecord(orderId, txId,
                     PaymentGateway.valueOf(gatewayStr.toUpperCase()), paymentData);
 
-            return ResponseBase.ok(convertToPaymentResponseDTO(savedPayment), "Payment confirmed successfully");
+            return ResponseBase.ok(paymentMapper.toPaymentResponseDTO(savedPayment), "Payment confirmed successfully");
         } catch (Exception e) {
             return ResponseBase.error(HttpStatus.BAD_REQUEST, "Payment confirmation failed: " + e.getMessage());
         }
@@ -108,10 +109,7 @@ public class PaymentController {
     public ResponseEntity<ResponseBase<List<PaymentResponseDTO>>> getPaymentHistory(
             @Parameter(description = "Customer ID") @PathVariable Integer customerId) {
         try {
-            List<Payment> payments = paymentService.getCustomerPaymentHistory(customerId);
-            List<PaymentResponseDTO> responseData = payments.stream()
-                    .map(this::convertToPaymentResponseDTO)
-                    .collect(Collectors.toList());
+            List<PaymentResponseDTO> responseData = paymentService.getCustomerPaymentHistory(customerId);
 
             return ResponseBase.ok(responseData, "Payment history retrieved successfully");
         } catch (Exception e) {
@@ -125,10 +123,7 @@ public class PaymentController {
     public ResponseEntity<ResponseBase<List<PaymentResponseDTO>>> getPaymentByOrderId(
             @Parameter(description = "Order ID") @PathVariable Integer orderId) {
         try {
-            List<Payment> payments = paymentService.getPaymentByOrderId(orderId);
-            List<PaymentResponseDTO> responseData = payments.stream()
-                    .map(this::convertToPaymentResponseDTO)
-                    .collect(Collectors.toList());
+            List<PaymentResponseDTO> responseData = paymentService.getPaymentByOrderId(orderId);
 
             return ResponseBase.ok(responseData, "Payment info retrieved successfully");
         } catch (Exception e) {
@@ -162,23 +157,5 @@ public class PaymentController {
         } else {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result.getMessage());
         }
-    }
-
-    private PaymentResponseDTO convertToPaymentResponseDTO(Payment payment) {
-        String paymentStatus = payment.getPaymentStatus() != null ? payment.getPaymentStatus().name() : null;
-        return new PaymentResponseDTO(
-                payment.getPaymentId(),
-                payment.getOrder().getOrderId(),
-                payment.getGatewayTransactionId(),
-                payment.getPaymentGateway() != null ? payment.getPaymentGateway().name() : null,
-                paymentStatus,
-                payment.getAmount(),
-                payment.getCurrency(),
-                payment.getPaymentMethod(),
-                payment.getProcessingFee(),
-                payment.getNetAmount(),
-                payment.getFailureReason(),
-                payment.getCreatedAt(),
-                payment.getProcessedAt());
     }
 }

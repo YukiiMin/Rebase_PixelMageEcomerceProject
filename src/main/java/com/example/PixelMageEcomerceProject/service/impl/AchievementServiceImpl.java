@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.PixelMageEcomerceProject.dto.response.AchievementResponse;
+import com.example.PixelMageEcomerceProject.dto.response.UserAchievementResponse;
 import com.example.PixelMageEcomerceProject.entity.Achievement;
 import com.example.PixelMageEcomerceProject.entity.UserAchievement;
 import com.example.PixelMageEcomerceProject.enums.CardTemplateRarity;
@@ -39,6 +40,7 @@ public class AchievementServiceImpl implements AchievementService {
     private final UserInventoryRepository userInventoryRepository;
     private final UserCollectionProgressRepository userCollectionProgressRepository;
     private final PmPointWalletService pmPointWalletService;
+    private final com.example.PixelMageEcomerceProject.mapper.AchievementMapper achievementMapper;
 
     @Override
     public void checkAndGrantAchievements(Integer userId) {
@@ -91,15 +93,16 @@ public class AchievementServiceImpl implements AchievementService {
                 continue;
             }
 
-            LocalDateTime grantedAt = null;
+            AchievementResponse response = achievementMapper.toAchievementResponse(a);
+            response.setIsEarned(isEarned);
+
             if (isEarned) {
                 Optional<UserAchievement> ua = userAchievementRepository
                         .findByUserIdAndAchievement_Id(userId, a.getId());
-                grantedAt = ua.map(UserAchievement::getGrantedAt).orElse(null);
+                ua.ifPresent(userAchievement -> response.setGrantedAt(userAchievement.getGrantedAt()));
             }
 
-            result.add(new AchievementResponse(a.getId(), a.getName(), a.getDescription(),
-                    isEarned, grantedAt));
+            result.add(response);
         }
 
         return result;
@@ -107,14 +110,13 @@ public class AchievementServiceImpl implements AchievementService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AchievementResponse> getMyAchievements(Integer userId) {
+    public List<UserAchievementResponse> getMyAchievements(Integer userId) {
         List<UserAchievement> earned = userAchievementRepository.findByUserIdAndIsActiveTrue(userId);
-        List<AchievementResponse> result = new ArrayList<>();
+        List<UserAchievementResponse> result = new ArrayList<>();
 
         for (UserAchievement ua : earned) {
-            Achievement a = ua.getAchievement();
-            result.add(new AchievementResponse(a.getId(), a.getName(), a.getDescription(),
-                    true, ua.getGrantedAt()));
+            UserAchievementResponse response = achievementMapper.toUserAchievementResponse(ua);
+            result.add(response);
         }
 
         return result;

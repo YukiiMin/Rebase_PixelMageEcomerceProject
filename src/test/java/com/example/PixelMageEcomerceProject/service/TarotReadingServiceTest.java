@@ -109,6 +109,7 @@ public class TarotReadingServiceTest {
 
         assertNotNull(result);
         
+        @SuppressWarnings("unchecked")
         List<Map<String, Object>> drawnCards = (List<Map<String, Object>>) result.get("drawnCards");
         assertEquals(3, drawnCards.size());
         verify(userInventoryService).getLinkedCardTemplates(1);

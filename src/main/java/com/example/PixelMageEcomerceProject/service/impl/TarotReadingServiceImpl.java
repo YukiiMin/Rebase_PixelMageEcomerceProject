@@ -277,7 +277,8 @@ public class TarotReadingServiceImpl implements TarotReadingService {
                 }
                 payload.put("cards", cardsData);
 
-                ResponseEntity<Map> response = restTemplate.postForEntity(n8nWebhookUrl, payload, Map.class);
+                @SuppressWarnings("unchecked")
+                ResponseEntity<Map<String, Object>> response = (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) restTemplate.postForEntity(n8nWebhookUrl, payload, Map.class);
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                     interpretation = (String) response.getBody().get("aiInterpretation");
                 } else {

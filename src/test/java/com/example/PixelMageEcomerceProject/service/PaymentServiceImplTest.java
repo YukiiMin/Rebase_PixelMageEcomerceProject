@@ -3,7 +3,9 @@ package com.example.PixelMageEcomerceProject.service;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.Payment;
+import com.example.PixelMageEcomerceProject.enums.PaymentGateway;
 import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
+import com.example.PixelMageEcomerceProject.mapper.PaymentMapper;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
 import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.repository.PaymentRepository;
@@ -39,6 +41,8 @@ class PaymentServiceImplTest {
     private WebSocketNotificationService wsNotificationService;
     @Mock
     private PaymentGatewayStrategy activeGateway;
+    @Mock
+    private PaymentMapper paymentMapper;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
@@ -60,6 +64,7 @@ class PaymentServiceImplTest {
         // GIVEN
         when(orderRepository.findById(1)).thenReturn(Optional.of(testOrder));
 
+        when(activeGateway.getGatewayType()).thenReturn(PaymentGateway.SEPAY);
         InitPaymentResult mockResult = InitPaymentResult.builder()
                 .gatewayTransactionId("TXN_123")
                 .paymentUrl("http://pay.me")

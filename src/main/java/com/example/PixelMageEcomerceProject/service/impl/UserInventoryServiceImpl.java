@@ -3,18 +3,22 @@ package com.example.PixelMageEcomerceProject.service.impl;
 import java.util.List;
 import java.util.Optional;
 
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.CardTemplate;
 import com.example.PixelMageEcomerceProject.entity.UserInventory;
+import com.example.PixelMageEcomerceProject.dto.response.UserInventoryResponse;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
 import com.example.PixelMageEcomerceProject.repository.UserInventoryRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.SetStoryService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserCollectionProgressService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
+import com.example.PixelMageEcomerceProject.mapper.UserInventoryMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +34,7 @@ public class UserInventoryServiceImpl implements UserInventoryService {
     private final CardTemplateRepository cardTemplateRepository;
     private final UserCollectionProgressService userCollectionProgressService;
     private final SetStoryService setStoryService;
+    private final UserInventoryMapper userInventoryMapper;
 
     @Override
     public UserInventory upsertInventory(Integer userId, Integer cardTemplateId, int quantityChange) {
@@ -74,8 +79,10 @@ public class UserInventoryServiceImpl implements UserInventoryService {
     }
 
     @Override
-    public List<UserInventory> getUserInventory(Integer userId) {
-        return userInventoryRepository.findByUser_CustomerId(userId);
+    public List<UserInventoryResponse> getUserInventory(Integer userId) {
+        return userInventoryRepository.findByUser_CustomerId(userId).stream()
+                .map(userInventoryMapper::toUserInventoryResponse)
+                .collect(Collectors.toList());
     }
 
     @Override

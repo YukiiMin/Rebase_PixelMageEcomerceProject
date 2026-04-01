@@ -256,4 +256,9 @@ public class VNPayGatewayImpl implements VNPayService, PaymentGatewayStrategy {
         payment.setPaymentStatus(PaymentStatus.SUCCEEDED);
         paymentRepository.save(payment);
     }
+
+    @Override
+    public PaymentGateway getGatewayType() {
+        return PaymentGateway.VNPAY;
+    }
 }

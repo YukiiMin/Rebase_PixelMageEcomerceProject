@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.dto.request;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -10,4 +11,5 @@ import lombok.NoArgsConstructor;
 public class PackRequestDTO {
     private Integer productId;
     private Integer createdByAccountId;
+    private List<Integer> cardIds;
 }

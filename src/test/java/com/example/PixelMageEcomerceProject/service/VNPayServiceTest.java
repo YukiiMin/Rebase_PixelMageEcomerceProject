@@ -120,9 +120,6 @@ class VNPayServiceTest {
         when(request.getParameter("vnp_SecureHash")).thenReturn("VALID_HASH");
 
         // Mocking Service dependencies
-        Order order = new Order();
-        order.setOrderId(123);
-        when(orderRepository.findById(123)).thenReturn(Optional.of(order));
         when(vnPayConfig.getVnp_HashSecret()).thenReturn("SECRET");
 
         // Mocking Redis: key already exists
@@ -136,7 +133,7 @@ class VNPayServiceTest {
 
             assertEquals("00", result.get("RspCode"));
             assertEquals("Confirm Success", result.get("Message"));
-            verify(orderRepository).findById(123); // Standard lookup
+            verify(orderRepository, never()).findById(any()); // Should skip lookup for duplicate
             verify(paymentRepository, never()).save(any());
             verify(eventPublisher, never()).publishEvent(any());
         }
@@ -157,9 +154,6 @@ class VNPayServiceTest {
         when(request.getParameter("vnp_SecureHash")).thenReturn("VALID_HASH");
 
         // Mocking Service dependencies
-        Order order = new Order();
-        order.setOrderId(123);
-        when(orderRepository.findById(123)).thenReturn(Optional.of(order));
         when(vnPayConfig.getVnp_HashSecret()).thenReturn("SECRET");
 
         // Mocking Redis failure

@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
+import com.example.PixelMageEcomerceProject.enums.PaymentGateway;
 import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentGatewayStrategy;
 import com.example.PixelMageEcomerceProject.service.model.InitPaymentResult;
@@ -44,5 +45,10 @@ public class StripeGatewayimpl implements PaymentGatewayStrategy {
     @Override
     public PaymentStatus pollStatus(String gatewayTransactionId) {
         return PaymentStatus.PENDING;
+    }
+
+    @Override
+    public PaymentGateway getGatewayType() {
+        return PaymentGateway.STRIPE;
     }
 }

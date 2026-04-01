@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
+import com.example.PixelMageEcomerceProject.enums.PaymentGateway;
 import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
 import com.example.PixelMageEcomerceProject.service.model.InitPaymentResult;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentGatewayStrategy;
@@ -92,5 +93,10 @@ public class SEPayGatewayimpl implements PaymentGatewayStrategy {
         // Here we could call SEPay API to check if bank transfer is received for this transaction.
         log.info("[SEPay] pollStatus for transaction {}", gatewayTransactionId);
         return PaymentStatus.PENDING;
+    }
+
+    @Override
+    public PaymentGateway getGatewayType() {
+        return PaymentGateway.SEPAY;
     }
 }

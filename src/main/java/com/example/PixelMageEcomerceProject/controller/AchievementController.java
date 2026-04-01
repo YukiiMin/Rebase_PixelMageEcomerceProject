@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.response.AchievementResponse;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
+import com.example.PixelMageEcomerceProject.dto.response.UserAchievementResponse;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.service.interfaces.AchievementService;
 
@@ -40,7 +41,7 @@ public class AchievementController {
      */
     @GetMapping("/my")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('ADMIN')")
-    public ResponseEntity<ResponseBase<List<AchievementResponse>>> getMyAchievements(Authentication auth) {
+    public ResponseEntity<ResponseBase<List<UserAchievementResponse>>> getMyAchievements(Authentication auth) {
         Integer userId = extractUserId(auth);
         return ResponseBase.ok(achievementService.getMyAchievements(userId), "My achievements retrieved successfully");
     }

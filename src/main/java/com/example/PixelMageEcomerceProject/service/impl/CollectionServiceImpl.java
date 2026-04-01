@@ -42,11 +42,12 @@ public class CollectionServiceImpl implements CollectionService {
     private final AccountRepository accountRepository;
     private final CardTemplateRepository cardTemplateRepository;
     private final OrderRepository orderRepository;
+    private final com.example.PixelMageEcomerceProject.mapper.CollectionMapper collectionMapper;
 
     // ==================== Collection CRUD ====================
 
     @Override
-    public CardCollection createCollection(Integer customerId, CollectionRequestDTO request) {
+    public com.example.PixelMageEcomerceProject.dto.response.CollectionResponse createCollection(Integer customerId, CollectionRequestDTO request) {
         Account account = accountRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Account not found with id: " + customerId));
 
@@ -59,11 +60,11 @@ public class CollectionServiceImpl implements CollectionService {
         collection.setIsVisible(isPublic);
         collection.setSource("USER");
 
-        return cardCollectionRepository.save(collection);
+        return collectionMapper.toCollectionResponse(cardCollectionRepository.save(collection));
     }
 
     @Override
-    public CardCollection updateCollection(Integer customerId, Integer collectionId, CollectionRequestDTO request) {
+    public com.example.PixelMageEcomerceProject.dto.response.CollectionResponse updateCollection(Integer customerId, Integer collectionId, CollectionRequestDTO request) {
         CardCollection collection = cardCollectionRepository
                 .findByCollectionIdAndAccountCustomerId(collectionId, customerId)
                 .orElseThrow(() -> new RuntimeException(
@@ -79,7 +80,7 @@ public class CollectionServiceImpl implements CollectionService {
             collection.setIsPublic(request.getIsPublic());
         }
 
-        return cardCollectionRepository.save(collection);
+        return collectionMapper.toCollectionResponse(cardCollectionRepository.save(collection));
     }
 
     @Override
@@ -94,24 +95,26 @@ public class CollectionServiceImpl implements CollectionService {
     }
 
     @Override
-    public Optional<CardCollection> getCollectionById(Integer collectionId) {
-        return cardCollectionRepository.findById(collectionId);
+    public Optional<com.example.PixelMageEcomerceProject.dto.response.CollectionResponse> getCollectionById(Integer collectionId) {
+        return cardCollectionRepository.findById(collectionId).map(collectionMapper::toCollectionResponse);
     }
 
     @Override
-    public List<CardCollection> getCollectionsByCustomerId(Integer customerId) {
-        return cardCollectionRepository.findByAccountCustomerIdAndIsVisibleTrue(customerId);
+    public List<com.example.PixelMageEcomerceProject.dto.response.CollectionResponse> getCollectionsByCustomerId(Integer customerId) {
+        return cardCollectionRepository.findByAccountCustomerIdAndIsVisibleTrue(customerId)
+                .stream().map(collectionMapper::toCollectionResponse).collect(Collectors.toList());
     }
 
     @Override
     @Cacheable("public-collections")
-    public List<CardCollection> getPublicCollections() {
-        return cardCollectionRepository.findAllVisibleCollections(LocalDateTime.now());
+    public List<com.example.PixelMageEcomerceProject.dto.response.CollectionResponse> getPublicCollections() {
+        return cardCollectionRepository.findAllVisibleCollections(LocalDateTime.now())
+                .stream().map(collectionMapper::toCollectionResponse).collect(Collectors.toList());
     }
 
     @Override
     @CacheEvict(value = "public-collections", allEntries = true)
-    public CardCollection createAdminCollection(Integer adminId, AdminCollectionRequestDTO request) {
+    public com.example.PixelMageEcomerceProject.dto.response.CollectionResponse createAdminCollection(Integer adminId, AdminCollectionRequestDTO request) {
         Account admin = accountRepository.findById(adminId)
                 .orElseThrow(() -> new RuntimeException("Admin account not found with id: " + adminId));
 
@@ -148,21 +151,21 @@ public class CollectionServiceImpl implements CollectionService {
             }
         }
 
-        return savedCollection;
+        return collectionMapper.toCollectionResponse(savedCollection);
     }
 
     @Override
-    public CardCollection updateCollectionVisibility(Integer collectionId, Boolean isVisible) {
+    public com.example.PixelMageEcomerceProject.dto.response.CollectionResponse updateCollectionVisibility(Integer collectionId, Boolean isVisible) {
         CardCollection collection = cardCollectionRepository.findById(collectionId)
                 .orElseThrow(() -> new RuntimeException("Collection not found with id: " + collectionId));
         collection.setIsVisible(isVisible != null ? isVisible : collection.getIsVisible());
-        return cardCollectionRepository.save(collection);
+        return collectionMapper.toCollectionResponse(cardCollectionRepository.save(collection));
     }
 
     // ==================== Collection Items ====================
 
     @Override
-    public CollectionItem addCardToCollection(Integer customerId, CollectionItemRequestDTO request) {
+    public com.example.PixelMageEcomerceProject.dto.response.CollectionItemResponse addCardToCollection(Integer customerId, CollectionItemRequestDTO request) {
         // 1. Verify collection belongs to customer (Admin)
         CardCollection collection = cardCollectionRepository
                 .findByCollectionIdAndAccountCustomerId(request.getCollectionId(), customerId)
@@ -186,7 +189,7 @@ public class CollectionServiceImpl implements CollectionService {
         item.setCardTemplate(cardTemplate);
         item.setRequiredQuantity(request.getRequiredQuantity() != null ? request.getRequiredQuantity() : 1);
 
-        return collectionItemRepository.save(item);
+        return collectionMapper.toCollectionItemResponse(collectionItemRepository.save(item));
     }
 
     @Override
@@ -206,8 +209,9 @@ public class CollectionServiceImpl implements CollectionService {
     }
 
     @Override
-    public List<CollectionItem> getCollectionItems(Integer collectionId) {
-        return collectionItemRepository.findByCardCollectionCollectionId(collectionId);
+    public List<com.example.PixelMageEcomerceProject.dto.response.CollectionItemResponse> getCollectionItems(Integer collectionId) {
+        return collectionItemRepository.findByCardCollectionCollectionId(collectionId)
+                .stream().map(collectionMapper::toCollectionItemResponse).collect(Collectors.toList());
     }
 
     // ==================== Owned Cards ====================

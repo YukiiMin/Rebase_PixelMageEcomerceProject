@@ -130,6 +130,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
         return Base64.getUrlEncoder().encodeToString(SerializationUtils.serialize(object));
     }
 
+    @SuppressWarnings("deprecation")
     private <T> T deserialize(Cookie cookie, Class<T> cls) {
         try {
             byte[] decoded = Base64.getUrlDecoder().decode(cookie.getValue());
