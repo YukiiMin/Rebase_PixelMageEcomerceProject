@@ -30,6 +30,10 @@ import com.example.PixelMageEcomerceProject.security.jwt.JwtTokenProvider;
 import com.example.PixelMageEcomerceProject.security.service.AuthenticationService;
 import com.example.PixelMageEcomerceProject.service.interfaces.AccountService;
 import com.example.PixelMageEcomerceProject.service.impl.CheckoutTokenServiceImpl;
+import com.example.PixelMageEcomerceProject.mapper.AccountMapper;
+import com.example.PixelMageEcomerceProject.dto.response.AccountResponse;
+import com.example.PixelMageEcomerceProject.dto.response.AccountResponse;
+import com.example.PixelMageEcomerceProject.dto.response.AuthResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,6 +56,7 @@ public class AccountController {
         private final AuthenticationService authenticationService;
         private final JwtTokenProvider jwtTokenProvider;
         private final CheckoutTokenServiceImpl checkoutTokenService;
+        private final AccountMapper accountMapper;
 
         @Value("${app.backend.url}")
         private String backendUrl;
@@ -66,10 +71,10 @@ public class AccountController {
                         @ApiResponse(responseCode = "201", description = "Đăng ký thành công, chờ xác thực email"),
                         @ApiResponse(responseCode = "400", description = "Email đã tồn tại hoặc dữ liệu không hợp lệ")
         })
-        public ResponseEntity<ResponseBase<Account>> createAccount(@RequestBody RegisterRequestDTO dto) {
+        public ResponseEntity<ResponseBase<AccountResponse>> createAccount(@RequestBody RegisterRequestDTO dto) {
                 try {
                         return ResponseBase.created(
-                                        accountService.createAccount(dto),
+                                        accountMapper.toAccountResponse(accountService.createAccount(dto)),
                                         "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST, e.getMessage());
@@ -82,9 +87,16 @@ public class AccountController {
                         @ApiResponse(responseCode = "200", description = "Đăng nhập thành công, trả về accessToken + refreshToken"),
                         @ApiResponse(responseCode = "401", description = "Sai email/password hoặc email chưa được xác thực")
         })
-        public ResponseEntity<ResponseBase<Map<String, Object>>> loginAccount(@RequestBody LoginRequestDTO dto) {
+        public ResponseEntity<ResponseBase<AuthResponse>> loginAccount(@RequestBody LoginRequestDTO dto) {
                 try {
-                        return ResponseBase.ok(accountService.loginAccount(dto), "Đăng nhập thành công");
+                        Map<String, Object> serviceResult = accountService.loginAccount(dto);
+                        Account account = (Account) serviceResult.get("account");
+                        AuthResponse authResponse = AuthResponse.builder()
+                                .accessToken((String) serviceResult.get("accessToken"))
+                                .refreshToken((String) serviceResult.get("refreshToken"))
+                                .account(accountMapper.toAccountResponse(account))
+                                .build();
+                        return ResponseBase.ok(authResponse, "Đăng nhập thành công");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.UNAUTHORIZED, e.getMessage());
                 }
@@ -182,13 +194,20 @@ public class AccountController {
                         @ApiResponse(responseCode = "200", description = "Đăng nhập thành công, trả về accessToken + refreshToken"),
                         @ApiResponse(responseCode = "401", description = "Token không hợp lệ")
         })
-        public ResponseEntity<ResponseBase<Map<String, Object>>> verifyGoogleTokenForMobile(@RequestBody Map<String, String> payload) {
+        public ResponseEntity<ResponseBase<AuthResponse>> verifyGoogleTokenForMobile(@RequestBody Map<String, String> payload) {
                 try {
                         String idToken = payload.get("idToken");
                         if (idToken == null || idToken.isBlank()) {
                                 return ResponseBase.error(HttpStatus.BAD_REQUEST, "Missing idToken");
                         }
-                        return ResponseBase.ok(accountService.verifyGoogleMobileToken(idToken), "Xác thực Google token thành công.");
+                        Map<String, Object> serviceResult = accountService.verifyGoogleMobileToken(idToken);
+                        Account account = (Account) serviceResult.get("account");
+                        AuthResponse authResponse = AuthResponse.builder()
+                                .accessToken((String) serviceResult.get("accessToken"))
+                                .refreshToken((String) serviceResult.get("refreshToken"))
+                                .account(accountMapper.toAccountResponse(account))
+                                .build();
+                        return ResponseBase.ok(authResponse, "Xác thực Google token thành công.");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.UNAUTHORIZED, e.getMessage());
                 }
@@ -255,16 +274,19 @@ public class AccountController {
 
         @GetMapping("/list")
         @Operation(summary = "Lấy danh sách tất cả accounts")
-        public ResponseEntity<ResponseBase<List<Account>>> getAllAccounts() {
-                return ResponseBase.ok(accountService.getAllAccounts(), "Accounts retrieved successfully");
+        public ResponseEntity<ResponseBase<List<AccountResponse.Summary>>> getAllAccounts() {
+                List<AccountResponse.Summary> responses = accountService.getAllAccounts().stream()
+                                .map(accountMapper::toAccountSummaryResponse)
+                                .toList();
+                return ResponseBase.ok(responses, "Accounts retrieved successfully");
         }
 
         @GetMapping("/{id}")
         @Operation(summary = "Lấy account theo ID")
         @ApiResponse(responseCode = "404", description = "Không tìm thấy account")
-        public ResponseEntity<ResponseBase<Account>> getAccountById(@PathVariable Integer id) {
+        public ResponseEntity<ResponseBase<AccountResponse>> getAccountById(@PathVariable Integer id) {
                 return accountService.getAccountById(id)
-                                .map(a -> ResponseBase.ok(a, "Account retrieved successfully"))
+                                .map(a -> ResponseBase.ok(accountMapper.toAccountResponse(a), "Account retrieved successfully"))
                                 .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND,
                                                 "Account not found with id: " + id));
         }
@@ -272,9 +294,9 @@ public class AccountController {
         @GetMapping("/email/{email}")
         @Operation(summary = "Lấy account theo email")
         @ApiResponse(responseCode = "404", description = "Không tìm thấy account")
-        public ResponseEntity<ResponseBase<Account>> getAccountByEmail(@PathVariable String email) {
+        public ResponseEntity<ResponseBase<AccountResponse>> getAccountByEmail(@PathVariable String email) {
                 return accountService.getAccountByEmail(email)
-                                .map(a -> ResponseBase.ok(a, "Account retrieved successfully"))
+                                .map(a -> ResponseBase.ok(accountMapper.toAccountResponse(a), "Account retrieved successfully"))
                                 .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND, "Account not found"));
         }
 
@@ -286,11 +308,12 @@ public class AccountController {
                         @ApiResponse(responseCode = "200", description = "Cập nhật thành công"),
                         @ApiResponse(responseCode = "404", description = "Không tìm thấy account")
         })
-        public ResponseEntity<ResponseBase<Account>> updateAccount(
+        public ResponseEntity<ResponseBase<AccountResponse>> updateAccount(
                         @PathVariable Integer id,
                         @RequestBody UpdateProfileRequestDTO dto) {
                 try {
-                        return ResponseBase.ok(accountService.updateAccount(id, dto),
+                        Account updatedAccount = accountService.updateAccount(id, dto);
+                        return ResponseBase.ok(accountMapper.toAccountResponse(updatedAccount),
                                         "Account updated successfully");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST, e.getMessage());

@@ -16,6 +16,7 @@ import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
 import com.example.PixelMageEcomerceProject.repository.ProductRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.CardService;
 
+import com.example.PixelMageEcomerceProject.mapper.CardMapper;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -26,6 +27,7 @@ public class CardServiceImpl implements CardService {
     private final CardRepository cardRepository;
     private final CardTemplateRepository cardTemplateRepository;
     private final ProductRepository productRepository;
+    private final CardMapper cardMapper;
 
     @Override
     public Card createCardProduct(CardRequestDTO cardRequestDTO) {
@@ -36,12 +38,12 @@ public class CardServiceImpl implements CardService {
         Product product = productRepository.findById(cardRequestDTO.getProductId())
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + cardRequestDTO.getProductId()));
 
-        Card card = new Card();
+        Card card = cardMapper.toEntity(cardRequestDTO);
         card.setCardTemplate(cardTemplate);
         card.setProduct(product);
-        card.setCustomText(cardRequestDTO.getCustomText());
-        card.setProductionBatch(cardRequestDTO.getProductionBatch());
-        card.setCardCondition(cardRequestDTO.getCardCondition() != null ? cardRequestDTO.getCardCondition() : "NEW");
+        if (card.getCardCondition() == null) {
+            card.setCardCondition("NEW");
+        }
         card.setStatus(CardProductStatus.PENDING_BIND);
 
         return cardRepository.save(card);

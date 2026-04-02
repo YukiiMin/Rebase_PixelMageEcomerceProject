@@ -6,8 +6,9 @@ import com.example.PixelMageEcomerceProject.entity.Achievement;
 import com.example.PixelMageEcomerceProject.entity.UserAchievement;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
-@Mapper
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AchievementMapper {
 
     @Mapping(target = "isEarned", constant = "false")

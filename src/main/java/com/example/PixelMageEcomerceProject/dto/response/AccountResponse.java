@@ -22,4 +22,17 @@ public class AccountResponse {
     private Boolean isActive;
     private LocalDateTime createdAt;
     private Boolean guestReadingUsedToday;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Summary {
+        private Integer customerId;
+        private String email;
+        private String name;
+        private String role;
+        private Boolean isActive;
+        private LocalDateTime createdAt;
+    }
 }

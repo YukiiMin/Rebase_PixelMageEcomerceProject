@@ -22,6 +22,8 @@ import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.repository.ProductRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.PackService;
 import com.example.PixelMageEcomerceProject.exceptions.InsufficientCardsException;
+import com.example.PixelMageEcomerceProject.mapper.PackMapper;
+import com.example.PixelMageEcomerceProject.dto.response.PackResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,12 +39,11 @@ public class PackServiceImpl implements PackService {
     private final ProductRepository productRepository;
     private final AccountRepository accountRepository;
     private final CardRepository cardRepository;
-
-
+    private final PackMapper packMapper;
 
     @Override
     @Transactional
-    public Pack createPack(PackRequestDTO requestDTO) {
+    public PackResponse createPack(PackRequestDTO requestDTO) {
         Product product = productRepository.findById(requestDTO.getProductId())
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + requestDTO.getProductId()));
 
@@ -104,37 +105,37 @@ public class PackServiceImpl implements PackService {
 
         packDetailRepository.saveAll(packDetails);
         pack.setPackDetails(packDetails);
-        return packRepository.save(pack);
+        return packMapper.toResponse(packRepository.save(pack));
     }
 
 
 
     @Override
-    public Pack updatePackStatus(Integer packId, PackStatus status) {
+    public PackResponse updatePackStatus(Integer packId, PackStatus status) {
         Pack pack = packRepository.findById(packId)
                 .orElseThrow(() -> new RuntimeException("Pack not found: " + packId));
         pack.setStatus(status);
-        return packRepository.save(pack);
+        return packMapper.toResponse(packRepository.save(pack));
     }
 
     @Override
-    public Optional<Pack> getPackById(Integer id) {
-        return packRepository.findById(id);
+    public Optional<PackResponse> getPackById(Integer id) {
+        return packRepository.findById(id).map(packMapper::toResponse);
     }
 
     @Override
-    public List<Pack> getAllPacks() {
-        return packRepository.findAll();
+    public List<PackResponse> getAllPacks() {
+        return packRepository.findAll().stream().map(packMapper::toResponse).toList();
     }
 
     @Override
-    public List<Pack> getPacksByStatus(PackStatus status) {
-        return packRepository.findByStatus(status);
+    public List<PackResponse> getPacksByStatus(PackStatus status) {
+        return packRepository.findByStatus(status).stream().map(packMapper::toResponse).toList();
     }
 
     @Override
-    public List<Pack> getPacksByProductAndStatus(Integer productId, PackStatus status) {
-        return packRepository.findByProductProductIdAndStatus(productId, status);
+    public List<PackResponse> getPacksByProductAndStatus(Integer productId, PackStatus status) {
+        return packRepository.findByProductProductIdAndStatus(productId, status).stream().map(packMapper::toResponse).toList();
     }
 
     @Override

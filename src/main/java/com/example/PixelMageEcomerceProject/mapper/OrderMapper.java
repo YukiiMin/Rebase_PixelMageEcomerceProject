@@ -1,14 +1,12 @@
 package com.example.PixelMageEcomerceProject.mapper;
 
 import com.example.PixelMageEcomerceProject.dto.response.OrderResponse;
-import com.example.PixelMageEcomerceProject.dto.response.OrderItemResponse;
 import com.example.PixelMageEcomerceProject.entity.Order;
-import com.example.PixelMageEcomerceProject.entity.OrderItem;
 import com.example.PixelMageEcomerceProject.entity.Voucher;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(uses = {AccountMapper.class, ProductMapper.class})
+@Mapper(componentModel = "spring", uses = {AccountMapper.class, ProductMapper.class, OrderItemMapper.class})
 public interface OrderMapper {
 
     @Mapping(target = "orderId", source = "orderId")
@@ -19,8 +17,8 @@ public interface OrderMapper {
     @Mapping(target = "paymentQrUrl", ignore = true)
     OrderResponse toOrderResponse(Order order);
 
-    OrderResponse.AppliedVoucherResponse toAppliedVoucherResponse(Voucher voucher);
+    OrderResponse.AppliedVoucher toAppliedVoucherResponse(Voucher voucher);
 
-    @Mapping(target = "orderItemId", source = "orderItemId")
-    OrderItemResponse toOrderItemResponse(OrderItem orderItem);
+    // delegated to OrderItemMapper
+    // OrderItemResponse toOrderItemResponse(OrderItem orderItem);
 }

@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.PixelMageEcomerceProject.dto.response.SpreadResponse;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.CardTemplate;
 import com.example.PixelMageEcomerceProject.entity.DivineHelper;
@@ -28,6 +29,7 @@ import com.example.PixelMageEcomerceProject.exceptions.GuestReadingLimitExceptio
 import com.example.PixelMageEcomerceProject.exceptions.InsufficientCardsException;
 import com.example.PixelMageEcomerceProject.exceptions.RedisUnavailableException;
 import com.example.PixelMageEcomerceProject.exceptions.SessionExpiredException;
+import com.example.PixelMageEcomerceProject.mapper.SpreadMapper;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.DivineHelperRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingCardRepository;
@@ -58,6 +60,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
     private final AccountRepository accountRepository;
     private final CardTemplateService cardTemplateService;
     private final UserInventoryService userInventoryService;
+    private final SpreadMapper spreadMapper;
 
     @Value("${OPENAI_API_KEY:}")
     private String openAiApiKey;
@@ -73,8 +76,8 @@ public class TarotReadingServiceImpl implements TarotReadingService {
 
     @Override
     @Cacheable("spreads")
-    public List<Spread> getAllSpreads() {
-        return spreadRepository.findAll();
+    public List<SpreadResponse> getAllSpreads() {
+        return spreadMapper.toResponses(spreadRepository.findAll());
     }
 
     @Override
@@ -229,7 +232,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
             templateMap.put("name", chosenCard.getName());
             templateMap.put("imageUrl", chosenCard.getImagePath() != null ? chosenCard.getImagePath() : chosenCard.getDesignPath());
             templateMap.put("rarity", chosenCard.getRarity() != null ? chosenCard.getRarity().name() : "COMMON");
-            
+
             cardMap.put("cardTemplate", templateMap);
 
             drawnCardsOutput.add(cardMap);

@@ -1,7 +1,9 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
 import com.example.PixelMageEcomerceProject.dto.request.RoleRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.response.RoleResponseDTO;
 import com.example.PixelMageEcomerceProject.entity.Role;
+import com.example.PixelMageEcomerceProject.mapper.RoleMapper;
 import com.example.PixelMageEcomerceProject.repository.RoleRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.RoleService;
 import lombok.RequiredArgsConstructor;
@@ -16,23 +18,22 @@ import java.util.Optional;
 public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
+    private final RoleMapper roleMapper;
 
     @Override
     @Transactional
-    public Role createRole(RoleRequestDTO roleRequestDTO) {
+    public RoleResponseDTO createRole(RoleRequestDTO roleRequestDTO) {
         if (existsByRoleName(roleRequestDTO.getRoleName())) {
             throw new RuntimeException("Role name already exists: " + roleRequestDTO.getRoleName());
         }
 
-        Role role = new Role();
-        role.setRoleName(roleRequestDTO.getRoleName());
-
-        return roleRepository.save(role);
+        Role role = roleMapper.toEntity(roleRequestDTO);
+        return roleMapper.toResponse(roleRepository.save(role));
     }
 
     @Override
     @Transactional
-    public Role updateRole(Integer roleId, RoleRequestDTO roleRequestDTO) {
+    public RoleResponseDTO updateRole(Integer roleId, RoleRequestDTO roleRequestDTO) {
         Role existingRole = roleRepository.findById(roleId)
                 .orElseThrow(() -> new RuntimeException("Role not found with id: " + roleId));
 
@@ -44,7 +45,7 @@ public class RoleServiceImpl implements RoleService {
 
         existingRole.setRoleName(roleRequestDTO.getRoleName());
 
-        return roleRepository.save(existingRole);
+        return roleMapper.toResponse(roleRepository.save(existingRole));
     }
 
     @Override
@@ -58,20 +59,20 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Role> getRoleById(Integer roleId) {
-        return roleRepository.findById(roleId);
+    public Optional<RoleResponseDTO> getRoleById(Integer roleId) {
+        return roleRepository.findById(roleId).map(roleMapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Role> getRoleByName(String roleName) {
-        return roleRepository.findByRoleName(roleName);
+    public Optional<RoleResponseDTO> getRoleByName(String roleName) {
+        return roleRepository.findByRoleName(roleName).map(roleMapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Role> getAllRoles() {
-        return roleRepository.findAll();
+    public List<RoleResponseDTO> getAllRoles() {
+        return roleMapper.toResponses(roleRepository.findAll());
     }
 
     @Override
@@ -80,4 +81,3 @@ public class RoleServiceImpl implements RoleService {
         return roleRepository.existsByRoleName(roleName);
     }
 }
-

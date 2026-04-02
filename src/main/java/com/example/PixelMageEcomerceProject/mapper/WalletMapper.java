@@ -1,17 +1,21 @@
 package com.example.PixelMageEcomerceProject.mapper;
 
-import com.example.PixelMageEcomerceProject.dto.response.WalletResponse;
-import com.example.PixelMageEcomerceProject.entity.PmPointWallet;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
-@Mapper
+import com.example.PixelMageEcomerceProject.dto.response.PmPointWalletResponse;
+import com.example.PixelMageEcomerceProject.dto.response.WalletResponse;
+import com.example.PixelMageEcomerceProject.entity.PmPointWallet;
+
+@Mapper(componentModel = "spring")
 public interface WalletMapper {
 
     @Mapping(target = "canRedeemVoucher", source = "wallet", qualifiedByName = "canRedeem")
     @Mapping(target = "pointsToNextVoucher", source = "wallet", qualifiedByName = "calculatePointsToNext")
     WalletResponse toWalletResponse(PmPointWallet wallet);
+
+    PmPointWalletResponse toPmPointWalletResponse(PmPointWallet wallet);
 
     @Named("canRedeem")
     default boolean canRedeem(PmPointWallet wallet) {
@@ -20,7 +24,8 @@ public interface WalletMapper {
 
     @Named("calculatePointsToNext")
     default Integer calculatePointsToNext(PmPointWallet wallet) {
-        if (wallet.getBalance() == null) return 100;
+        if (wallet.getBalance() == null)
+            return 100;
         return Math.max(0, 100 - (wallet.getBalance() % 100));
     }
 }

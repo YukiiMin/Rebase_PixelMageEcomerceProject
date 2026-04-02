@@ -7,7 +7,7 @@ import com.example.PixelMageEcomerceProject.entity.CollectionItem;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper
+@Mapper(componentModel = "spring")
 public interface CollectionMapper {
 
     @Mapping(target = "collectionId", source = "collectionId")

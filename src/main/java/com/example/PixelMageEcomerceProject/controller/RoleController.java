@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.request.RoleRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
-import com.example.PixelMageEcomerceProject.entity.Role;
+import com.example.PixelMageEcomerceProject.dto.response.RoleResponseDTO;
 import com.example.PixelMageEcomerceProject.service.interfaces.RoleService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,10 +46,10 @@ public class RoleController {
                         @ApiResponse(responseCode = "201", description = "Role created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Bad request - Role name already exists", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Role>> createRole(
+        public ResponseEntity<ResponseBase<RoleResponseDTO>> createRole(
                         @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Role details to create", required = true, content = @Content(schema = @Schema(implementation = RoleRequestDTO.class))) @RequestBody RoleRequestDTO roleRequestDTO) {
                 try {
-                        Role createdRole = roleService.createRole(roleRequestDTO);
+                        RoleResponseDTO createdRole = roleService.createRole(roleRequestDTO);
                         return ResponseBase.created(createdRole, "Role created successfully");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST, "Failed to create role: " + e.getMessage());
@@ -64,8 +64,8 @@ public class RoleController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Roles retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<Role>>> getAllRoles() {
-                List<Role> roles = roleService.getAllRoles();
+        public ResponseEntity<ResponseBase<List<RoleResponseDTO>>> getAllRoles() {
+                List<RoleResponseDTO> roles = roleService.getAllRoles();
                 return ResponseBase.ok(roles, "Roles retrieved successfully");
         }
 
@@ -78,7 +78,7 @@ public class RoleController {
                         @ApiResponse(responseCode = "200", description = "Role retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Role not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Role>> getRoleById(
+        public ResponseEntity<ResponseBase<RoleResponseDTO>> getRoleById(
                         @Parameter(description = "Role ID", required = true) @PathVariable Integer id) {
                 return roleService.getRoleById(id)
                                 .map(role -> ResponseBase.ok(role, "Role retrieved successfully"))
@@ -95,7 +95,7 @@ public class RoleController {
                         @ApiResponse(responseCode = "200", description = "Role retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Role not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Role>> getRoleByName(
+        public ResponseEntity<ResponseBase<RoleResponseDTO>> getRoleByName(
                         @Parameter(description = "Role name", required = true) @PathVariable String roleName) {
                 return roleService.getRoleByName(roleName)
                                 .map(role -> ResponseBase.ok(role, "Role retrieved successfully"))
@@ -113,11 +113,11 @@ public class RoleController {
                         @ApiResponse(responseCode = "400", description = "Bad request - Invalid data or role name already exists", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Role not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Role>> updateRole(
+        public ResponseEntity<ResponseBase<RoleResponseDTO>> updateRole(
                         @Parameter(description = "Role ID", required = true) @PathVariable Integer id,
                         @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Updated role details", required = true, content = @Content(schema = @Schema(implementation = RoleRequestDTO.class))) @RequestBody RoleRequestDTO roleRequestDTO) {
                 try {
-                        Role updatedRole = roleService.updateRole(id, roleRequestDTO);
+                        RoleResponseDTO updatedRole = roleService.updateRole(id, roleRequestDTO);
                         return ResponseBase.ok(updatedRole, "Role updated successfully");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST, "Failed to update role: " + e.getMessage());
@@ -136,6 +136,7 @@ public class RoleController {
         public ResponseEntity<ResponseBase<Void>> deleteRole(
                         @Parameter(description = "Role ID", required = true) @PathVariable Integer id) {
                 try {
+                        roleService.deleteRole(id);
                         return ResponseBase.success("Role deleted successfully");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.NOT_FOUND, "Failed to delete role: " + e.getMessage());

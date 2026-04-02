@@ -14,8 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.request.InventoryRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.response.InventoryResponse;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
-import com.example.PixelMageEcomerceProject.entity.Inventory;
+import com.example.PixelMageEcomerceProject.mapper.InventoryMapper;
 import com.example.PixelMageEcomerceProject.service.interfaces.InventoryService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 public class InventoryController {
 
         private final InventoryService inventoryService;
+        private final InventoryMapper inventoryMapper;
 
         @PostMapping("/{productId}")
         @Operation(summary = "Create inventory record", description = "Create a new inventory record")
@@ -42,11 +44,11 @@ public class InventoryController {
                         @ApiResponse(responseCode = "201", description = "Inventory created successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "400", description = "Bad request", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Inventory>> createInventory(
+        public ResponseEntity<ResponseBase<InventoryResponse>> createInventory(
                         @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Inventory details to create", required = true, content = @Content(schema = @Schema(implementation = InventoryRequestDTO.class))) @RequestBody InventoryRequestDTO inventoryRequestDTO,
                         @PathVariable Integer productId) {
                 try {
-                        Inventory createdInventory = inventoryService.createInventory(inventoryRequestDTO, productId);
+                        InventoryResponse createdInventory = inventoryMapper.toResponse(inventoryService.createInventory(inventoryRequestDTO, productId));
                         return ResponseBase.created(createdInventory, "Inventory created successfully");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.BAD_REQUEST,
@@ -59,8 +61,8 @@ public class InventoryController {
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Successfully retrieved inventory", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<Inventory>>> getAllInventory() {
-                List<Inventory> inventories = inventoryService.getAllInventories();
+        public ResponseEntity<ResponseBase<List<InventoryResponse>>> getAllInventory() {
+                List<InventoryResponse> inventories = inventoryMapper.toResponses(inventoryService.getAllInventories());
                 return ResponseBase.ok(inventories, "Inventory retrieved successfully");
         }
 
@@ -70,9 +72,9 @@ public class InventoryController {
                         @ApiResponse(responseCode = "200", description = "Successfully retrieved inventory", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Inventory not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Inventory>> getInventoryById(@PathVariable Integer id) {
+        public ResponseEntity<ResponseBase<InventoryResponse>> getInventoryById(@PathVariable Integer id) {
                 return inventoryService.getInventoryById(id)
-                                .map(inventory -> ResponseBase.ok(inventory, "Inventory retrieved successfully"))
+                                .map(inventory -> ResponseBase.ok(inventoryMapper.toResponse(inventory), "Inventory retrieved successfully"))
                                 .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND,
                                                 "Inventory not found with id: " + id));
         }
@@ -85,11 +87,11 @@ public class InventoryController {
                         @ApiResponse(responseCode = "200", description = "Inventory updated successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
                         @ApiResponse(responseCode = "404", description = "Inventory not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<Inventory>> updateInventory(
+        public ResponseEntity<ResponseBase<InventoryResponse>> updateInventory(
                         @PathVariable Integer id,
                         @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Inventory details to update", required = true, content = @Content(schema = @Schema(implementation = InventoryRequestDTO.class))) @RequestBody InventoryRequestDTO inventoryRequestDTO) {
                 try {
-                        Inventory updatedInventory = inventoryService.updateInventory(id, inventoryRequestDTO);
+                        InventoryResponse updatedInventory = inventoryMapper.toResponse(inventoryService.updateInventory(id, inventoryRequestDTO));
                         return ResponseBase.ok(updatedInventory, "Inventory updated successfully");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.NOT_FOUND,

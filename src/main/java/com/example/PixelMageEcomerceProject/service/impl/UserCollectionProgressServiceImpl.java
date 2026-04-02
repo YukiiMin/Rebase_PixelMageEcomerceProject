@@ -12,11 +12,15 @@ import com.example.PixelMageEcomerceProject.entity.CardCollection;
 import com.example.PixelMageEcomerceProject.entity.CollectionItem;
 import com.example.PixelMageEcomerceProject.entity.UserCollectionProgress;
 import com.example.PixelMageEcomerceProject.entity.UserInventory;
+import com.example.PixelMageEcomerceProject.entity.UserCollectionProgress;
+import com.example.PixelMageEcomerceProject.entity.UserInventory;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.CardCollectionRepository;
 import com.example.PixelMageEcomerceProject.repository.CollectionItemRepository;
 import com.example.PixelMageEcomerceProject.repository.UserCollectionProgressRepository;
 import com.example.PixelMageEcomerceProject.repository.UserInventoryRepository;
+import com.example.PixelMageEcomerceProject.dto.response.UserCollectionProgressResponse;
+import com.example.PixelMageEcomerceProject.mapper.UserCollectionProgressMapper;
 import com.example.PixelMageEcomerceProject.service.interfaces.CollectionRewardService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserCollectionProgressService;
 
@@ -33,6 +37,7 @@ public class UserCollectionProgressServiceImpl implements UserCollectionProgress
     private final AccountRepository accountRepository;
     private final CardCollectionRepository cardCollectionRepository;
     private final CollectionRewardService collectionRewardService;
+    private final UserCollectionProgressMapper progressMapper;
 
     @Override
     public void recalculateProgressForTemplate(Integer userId, Integer cardTemplateId) {
@@ -51,16 +56,16 @@ public class UserCollectionProgressServiceImpl implements UserCollectionProgress
     }
 
     @Override
-    public List<UserCollectionProgress> getUserProgress(Integer userId) {
-        return progressRepository.findByUser_CustomerId(userId);
+    public List<UserCollectionProgressResponse> getUserProgress(Integer userId) {
+        return progressMapper.toResponses(progressRepository.findByUser_CustomerId(userId));
     }
 
     @Override
-    public Optional<UserCollectionProgress> getCollectionProgress(Integer userId, Integer collectionId) {
+    public Optional<UserCollectionProgressResponse> getCollectionProgress(Integer userId, Integer collectionId) {
         Optional<UserCollectionProgress> progress = progressRepository
                 .findByUser_CustomerIdAndCollection_CollectionId(userId, collectionId);
         if (progress.isPresent()) {
-            return progress;
+            return progress.map(progressMapper::toResponse);
         }
 
         // If no progress record, check if collection exists to return 0% progress
@@ -77,7 +82,7 @@ public class UserCollectionProgressServiceImpl implements UserCollectionProgress
             virtualProgress.setRequiredCount(totalItems);
             virtualProgress.setCompletionPercent(0.0);
             virtualProgress.setIsCompleted(false);
-            return virtualProgress;
+            return progressMapper.toResponse(virtualProgress);
         });
     }
 

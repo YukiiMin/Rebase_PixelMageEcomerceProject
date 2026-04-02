@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
+import com.example.PixelMageEcomerceProject.dto.response.SpreadResponse;
 import com.example.PixelMageEcomerceProject.entity.ReadingSession;
-import com.example.PixelMageEcomerceProject.entity.Spread;
 import com.example.PixelMageEcomerceProject.service.interfaces.TarotReadingService;
 
 import lombok.RequiredArgsConstructor;
@@ -32,9 +32,9 @@ public class TarotReadingController {
      * Lấy danh sách các kiểu trải bài (Spread)
      */
     @GetMapping("/spreads")
-    public ResponseEntity<ResponseBase<List<Spread>>> getSpreads() {
+    public ResponseEntity<ResponseBase<List<SpreadResponse>>> getSpreads() {
         try {
-            List<Spread> spreads = tarotReadingService.getAllSpreads();
+            List<SpreadResponse> spreads = tarotReadingService.getAllSpreads();
             return ResponseBase.ok(spreads, "Success");
         } catch (Exception e) {
             return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());

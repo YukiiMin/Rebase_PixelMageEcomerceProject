@@ -20,5 +20,5 @@ public class ProductResponse {
     private String imageUrl;
     private Integer poolSize;
     private Integer stockCount;
-    private List<CardTemplateSummaryResponse> poolPreview;
+    private List<CardTemplateResponse.Summary> poolPreview;
 }
