@@ -1,16 +1,17 @@
 package com.example.PixelMageEcomerceProject.mapper;
 
-import com.example.PixelMageEcomerceProject.dto.response.ProductResponse;
-import com.example.PixelMageEcomerceProject.entity.Product;
-import com.example.PixelMageEcomerceProject.entity.Pack;
-import com.example.PixelMageEcomerceProject.enums.PackStatus;
+import java.util.List;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
-import java.util.List;
+import com.example.PixelMageEcomerceProject.dto.response.ProductResponse;
+import com.example.PixelMageEcomerceProject.entity.Pack;
+import com.example.PixelMageEcomerceProject.entity.Product;
+import com.example.PixelMageEcomerceProject.enums.PackStatus;
 
-@Mapper(uses = {CardTemplateMapper.class})
+@Mapper(componentModel = "spring", uses = { CardTemplateMapper.class })
 public interface ProductMapper {
 
     @Mapping(target = "poolSize", source = "product", qualifiedByName = "calculatePoolSize")
@@ -25,7 +26,8 @@ public interface ProductMapper {
 
     @Named("calculateStockCount")
     default Integer calculateStockCount(List<Pack> packs) {
-        if (packs == null) return 0;
+        if (packs == null)
+            return 0;
         return (int) packs.stream()
                 .filter(p -> p.getStatus() == PackStatus.STOCKED)
                 .count();

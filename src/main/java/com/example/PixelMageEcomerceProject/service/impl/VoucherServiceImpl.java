@@ -13,7 +13,6 @@ import com.example.PixelMageEcomerceProject.dto.response.VoucherResponse;
 import com.example.PixelMageEcomerceProject.entity.Voucher;
 import com.example.PixelMageEcomerceProject.repository.VoucherRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.VoucherService;
-
 import com.example.PixelMageEcomerceProject.mapper.VoucherMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -29,7 +28,7 @@ public class VoucherServiceImpl implements VoucherService {
     private final VoucherMapper voucherMapper;
 
     @Override
-    public Voucher createVoucher(Integer userId) {
+    public VoucherResponse createVoucher(Integer userId) {
         Voucher voucher = new Voucher();
         voucher.setCode(UUID.randomUUID().toString().replace("-", "").toUpperCase().substring(0, 8));
         voucher.setDiscountPct(10);
@@ -37,14 +36,15 @@ public class VoucherServiceImpl implements VoucherService {
         voucher.setOwnerId(userId);
         voucher.setExpiresAt(LocalDateTime.now().plusDays(30));
         voucher.setIsUsed(false);
-        return voucherRepository.save(voucher);
+        return voucherMapper.toVoucherResponse(voucherRepository.save(voucher));
     }
 
     @Override
     public BigDecimal redeemVoucher(String code, Integer userId, BigDecimal orderTotal) {
         BigDecimal discountValue = validateVoucherInternal(code, userId, orderTotal);
         
-        Voucher voucher = voucherRepository.findByCode(code).get(); // present validated inside internal
+        Voucher voucher = voucherRepository.findByCode(code)
+                .orElseThrow(() -> new IllegalArgumentException("Voucher không tồn tại"));
         voucher.setIsUsed(true);
         voucherRepository.save(voucher);
         

@@ -3,7 +3,7 @@ package com.example.PixelMageEcomerceProject.service.impl;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
+
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +24,7 @@ import com.example.PixelMageEcomerceProject.service.interfaces.UnlinkRequestServ
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import com.example.PixelMageEcomerceProject.mapper.UnlinkRequestMapper;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -47,6 +48,7 @@ public class UnlinkRequestServiceImpl implements UnlinkRequestService {
     private final CardRepository cardRepository;
     private final NFCScanService nfcScanService;
     private final EmailService emailService;
+    private final UnlinkRequestMapper unlinkRequestMapper;
 
     private static final int TOKEN_EXPIRY_MINUTES = 10;
 
@@ -87,7 +89,7 @@ public class UnlinkRequestServiceImpl implements UnlinkRequestService {
         // Gửi email xác nhận — @Async, non-blocking, không crash flow nếu mail fail
         emailService.sendUnlinkVerificationEmail(customer.getEmail(), customer.getName(), request.getToken());
 
-        return toResponse(request);
+        return unlinkRequestMapper.toResponse(request);
     }
 
     /**
@@ -121,11 +123,8 @@ public class UnlinkRequestServiceImpl implements UnlinkRequestService {
      */
     @Override
     public List<UnlinkRequestResponse> getQueueForStaff() {
-        return unlinkRequestRepository
-                .findByStatusOrderByCreatedAtDesc(UnlinkRequestStatus.EMAIL_CONFIRMED)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return unlinkRequestMapper.toResponses(unlinkRequestRepository
+                .findByStatusOrderByCreatedAtDesc(UnlinkRequestStatus.EMAIL_CONFIRMED));
     }
 
     /**
@@ -201,14 +200,5 @@ public class UnlinkRequestServiceImpl implements UnlinkRequestService {
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private UnlinkRequestResponse toResponse(UnlinkRequest r) {
-        return new UnlinkRequestResponse(
-                r.getId(),
-                r.getNfcUid(),
-                r.getStatus().name(),
-                r.getCreatedAt(),
-                r.getResolvedAt(),
-                r.getStaffNote()
-        );
-    }
+
 }

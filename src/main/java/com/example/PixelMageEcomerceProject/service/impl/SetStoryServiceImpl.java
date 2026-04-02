@@ -20,6 +20,7 @@ import com.example.PixelMageEcomerceProject.repository.UserInventoryRepository;
 import com.example.PixelMageEcomerceProject.repository.UserStoryUnlockRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.SetStoryService;
 
+import com.example.PixelMageEcomerceProject.mapper.SetStoryMapper;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -31,6 +32,7 @@ public class SetStoryServiceImpl implements SetStoryService {
     private final UserStoryUnlockRepository userStoryUnlockRepository;
     private final UserInventoryRepository userInventoryRepository;
     private final AccountRepository accountRepository;
+    private final SetStoryMapper setStoryMapper;
 
     @Override
     public void checkAndUnlockStories(Integer userId) {
@@ -149,7 +151,7 @@ public class SetStoryServiceImpl implements SetStoryService {
                     "Bạn chưa mở khóa story này. Hoàn thành bộ thẻ để truy cập.");
         }
 
-        return toResponse(story);
+        return setStoryMapper.toResponse(story);
     }
 
     @Override
@@ -157,20 +159,9 @@ public class SetStoryServiceImpl implements SetStoryService {
     public SetStoryResponse getStoryByIdNoGate(Integer storyId) {
         SetStory story = setStoryRepository.findById(storyId)
                 .orElseThrow(() -> new RuntimeException("Story not found with id: " + storyId));
-        return toResponse(story);
+        return setStoryMapper.toResponse(story);
     }
 
-    private SetStoryResponse toResponse(SetStory story) {
-        return new SetStoryResponse(
-                story.getStoryId(),
-                story.getTitle(),
-                story.getContent(),
-                story.getRequiredTemplateIds(),
-                story.getCoverImagePath(),
-                story.getIsActive(),
-                story.getCreatedAt(),
-                story.getUpdatedAt());
-    }
 
     @Override
     public SetStory updateStory(SetStory story) {

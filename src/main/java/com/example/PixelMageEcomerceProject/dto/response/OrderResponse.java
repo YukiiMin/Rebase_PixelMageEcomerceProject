@@ -26,16 +26,49 @@ public class OrderResponse {
     private String notes;
     private LocalDateTime createdAt;
     
-    private AccountSummaryResponse customer;
-    private List<OrderItemResponse> orderItems;
-    private AppliedVoucherResponse appliedVoucher;
+    private AccountResponse.Summary customer;
+    private List<Item> orderItems;
+    private AppliedVoucher appliedVoucher;
     private String paymentQrUrl;
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AppliedVoucherResponse {
+    public static class Item {
+        private Integer orderItemId;
+        private Integer quantity;
+        private BigDecimal unitPrice;
+        private BigDecimal subtotal;
+        private String customText;
+        private PackSummary pack;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PackSummary {
+        private Integer packId;
+        private String status;
+        private ProductSummary product;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProductSummary {
+        private Integer productId;
+        private String name;
+        private String imageUrl;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AppliedVoucher {
         private String code;
         private Integer discountPct;
         private Integer maxDiscountVnd;

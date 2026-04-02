@@ -1,15 +1,15 @@
 package com.example.PixelMageEcomerceProject.service.interfaces;
 
+import com.example.PixelMageEcomerceProject.dto.response.UserCollectionProgressResponse;
+
 import java.util.List;
 import java.util.Optional;
-
-import com.example.PixelMageEcomerceProject.entity.UserCollectionProgress;
 
 public interface UserCollectionProgressService {
     void recalculateProgressForTemplate(Integer userId, Integer cardTemplateId);
 
-    List<UserCollectionProgress> getUserProgress(Integer userId);
+    List<UserCollectionProgressResponse> getUserProgress(Integer userId);
 
-    Optional<UserCollectionProgress> getCollectionProgress(
+    Optional<UserCollectionProgressResponse> getCollectionProgress(
             Integer userId, Integer collectionId);
 }

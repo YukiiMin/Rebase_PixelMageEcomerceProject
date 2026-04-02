@@ -3,11 +3,11 @@ package com.example.PixelMageEcomerceProject.service.interfaces;
 import java.util.List;
 import java.util.Map;
 
+import com.example.PixelMageEcomerceProject.dto.response.SpreadResponse;
 import com.example.PixelMageEcomerceProject.entity.ReadingSession;
-import com.example.PixelMageEcomerceProject.entity.Spread;
 
 public interface TarotReadingService {
-    List<Spread> getAllSpreads();
+    List<SpreadResponse> getAllSpreads();
 
     Map<String, Object> createSession(Integer accountId, Integer spreadId, String mode);
 

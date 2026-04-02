@@ -11,6 +11,7 @@ import com.example.PixelMageEcomerceProject.repository.PmPointWalletRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.PmPointWalletService;
 import com.example.PixelMageEcomerceProject.service.interfaces.VoucherService;
 
+import com.example.PixelMageEcomerceProject.mapper.WalletMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,6 +23,7 @@ public class PmPointWalletServiceImpl implements PmPointWalletService {
 
     private final PmPointWalletRepository pmPointWalletRepository;
     private final VoucherService voucherService;
+    private final WalletMapper walletMapper;
 
     @Override
     public void credit(Integer userId, Integer amount) {
@@ -52,7 +54,7 @@ public class PmPointWalletServiceImpl implements PmPointWalletService {
                     newWallet.setBalance(0);
                     return pmPointWalletRepository.save(newWallet);
                 });
-        return new PmPointWalletResponse(wallet.getUserId(), wallet.getBalance());
+        return walletMapper.toPmPointWalletResponse(wallet);
     }
 
     @Override

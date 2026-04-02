@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.request.PackRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
-import com.example.PixelMageEcomerceProject.entity.Pack;
+import com.example.PixelMageEcomerceProject.dto.response.PackResponse;
 import com.example.PixelMageEcomerceProject.enums.PackStatus;
 import com.example.PixelMageEcomerceProject.service.interfaces.PackService;
 
@@ -35,9 +35,9 @@ public class PackController {
 
     @PostMapping("/create")
     @Operation(summary = "Create a pack (Manufacturing)", description = "Run RNG logic to pick card templates inside a pack product")
-    public ResponseEntity<ResponseBase<Pack>> createPack(@RequestBody PackRequestDTO requestDTO) {
+    public ResponseEntity<ResponseBase<PackResponse>> createPack(@RequestBody PackRequestDTO requestDTO) {
         try {
-            Pack pack = packService.createPack(requestDTO);
+            PackResponse pack = packService.createPack(requestDTO);
             return ResponseBase.created(pack, "Pack generated successfully via RNG");
         } catch (Exception e) {
             return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -46,10 +46,10 @@ public class PackController {
 
     @PutMapping("/{id}/status")
     @Operation(summary = "Update pack status", description = "Update the status (e.g., STOCKED, RESERVED, SOLD)")
-    public ResponseEntity<ResponseBase<Pack>> updatePackStatus(@PathVariable Integer id,
+    public ResponseEntity<ResponseBase<PackResponse>> updatePackStatus(@PathVariable Integer id,
             @RequestParam PackStatus status) {
         try {
-            Pack pack = packService.updatePackStatus(id, status);
+            PackResponse pack = packService.updatePackStatus(id, status);
             return ResponseBase.ok(pack, "Pack status updated");
         } catch (Exception e) {
             return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -58,21 +58,21 @@ public class PackController {
 
     @GetMapping("/available")
     @Operation(summary = "Get available packs", description = "Retrieve packs that are STOCKED")
-    public ResponseEntity<ResponseBase<List<Pack>>> getAvailablePacks() {
-        List<Pack> packs = packService.getPacksByStatus(PackStatus.STOCKED);
+    public ResponseEntity<ResponseBase<List<PackResponse>>> getAvailablePacks() {
+        List<PackResponse> packs = packService.getPacksByStatus(PackStatus.STOCKED);
         return ResponseBase.ok(packs, "Available packs retrieved");
     }
 
     @GetMapping
     @Operation(summary = "Get all packs", description = "Retrieve all packs")
-    public ResponseEntity<ResponseBase<List<Pack>>> getAllPacks() {
-        List<Pack> packs = packService.getAllPacks();
+    public ResponseEntity<ResponseBase<List<PackResponse>>> getAllPacks() {
+        List<PackResponse> packs = packService.getAllPacks();
         return ResponseBase.ok(packs, "Packs retrieved");
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get pack by ID", description = "Retrieve a specific pack detail including its cards")
-    public ResponseEntity<ResponseBase<Pack>> getPackById(@PathVariable Integer id) {
+    public ResponseEntity<ResponseBase<PackResponse>> getPackById(@PathVariable Integer id) {
         return packService.getPackById(id)
                 .map(pack -> ResponseBase.ok(pack, "Pack found"))
                 .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND, "Pack not found"));

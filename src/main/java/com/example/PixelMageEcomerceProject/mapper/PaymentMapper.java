@@ -6,7 +6,7 @@ import org.mapstruct.Mapping;
 import com.example.PixelMageEcomerceProject.dto.response.PaymentResponseDTO;
 import com.example.PixelMageEcomerceProject.entity.Payment;
 
-@Mapper
+@Mapper(componentModel = "spring")
 public interface PaymentMapper {
 
     @Mapping(target = "orderId", source = "order.orderId")

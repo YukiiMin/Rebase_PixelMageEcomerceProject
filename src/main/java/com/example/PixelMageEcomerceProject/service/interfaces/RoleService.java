@@ -1,7 +1,7 @@
 package com.example.PixelMageEcomerceProject.service.interfaces;
 
 import com.example.PixelMageEcomerceProject.dto.request.RoleRequestDTO;
-import com.example.PixelMageEcomerceProject.entity.Role;
+import com.example.PixelMageEcomerceProject.dto.response.RoleResponseDTO;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,12 +11,12 @@ public interface RoleService {
     /**
      * Create a new role
      */
-    Role createRole(RoleRequestDTO roleRequestDTO);
+    RoleResponseDTO createRole(RoleRequestDTO roleRequestDTO);
 
     /**
      * Update an existing role
      */
-    Role updateRole(Integer roleId, RoleRequestDTO roleRequestDTO);
+    RoleResponseDTO updateRole(Integer roleId, RoleRequestDTO roleRequestDTO);
 
     /**
      * Delete a role by ID
@@ -26,21 +26,20 @@ public interface RoleService {
     /**
      * Get role by ID
      */
-    Optional<Role> getRoleById(Integer roleId);
+    Optional<RoleResponseDTO> getRoleById(Integer roleId);
 
     /**
      * Get role by name
      */
-    Optional<Role> getRoleByName(String roleName);
+    Optional<RoleResponseDTO> getRoleByName(String roleName);
 
     /**
      * Get all roles
      */
-    List<Role> getAllRoles();
+    List<RoleResponseDTO> getAllRoles();
 
     /**
      * Check if role name exists
      */
     boolean existsByRoleName(String roleName);
 }
-

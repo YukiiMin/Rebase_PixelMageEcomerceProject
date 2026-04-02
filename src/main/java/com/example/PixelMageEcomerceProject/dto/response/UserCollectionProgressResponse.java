@@ -19,5 +19,4 @@ public class UserCollectionProgressResponse {
     private Double completionPercent;
     private Boolean isCompleted;
     private String rewardType;
-    private String coverImageUrl;
 }
