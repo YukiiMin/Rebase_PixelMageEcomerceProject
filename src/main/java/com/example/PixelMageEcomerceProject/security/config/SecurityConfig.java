@@ -80,6 +80,11 @@ public class SecurityConfig {
                                                                 "/api/payments/webhook/**",
                                                                 "/favicon.ico")
                                                 .permitAll()
+                                                // 2. Public GET endpoints cho Catalog & Marketplace
+                                                .requestMatchers(org.springframework.http.HttpMethod.GET, 
+                                                                "/api/products", 
+                                                                "/api/products/**")
+                                                .permitAll()
                                                 // Protected endpoints - JWT authentication required
                                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth2 -> oauth2

@@ -296,7 +296,7 @@ public class AccountServiceImpl implements AccountService {
 
                 // Tìm hoặc tạo account mới giống như luồng web
                 Account account = accountRepository.findByEmailIgnoreActive(email).orElse(null);
-                
+
                 if (account != null) {
                     boolean changed = false;
                     if (account.getAuthProvider() == com.example.PixelMageEcomerceProject.enums.AuthProvider.LOCAL && Boolean.TRUE.equals(account.getIsActive())) {

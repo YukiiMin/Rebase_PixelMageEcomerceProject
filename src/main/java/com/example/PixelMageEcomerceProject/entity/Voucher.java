@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
 /**
  * Voucher — generated when user redeems 1000 PM_point.
  * Sprint 2.4 rates (confirmed by Mapper March 2026):
- *   discountPct  = 10   (10% off)
- *   maxDiscountVnd = 20000  (cap 20,000 VND)
+ * discountPct = 10 (10% off)
+ * maxDiscountVnd = 20000 (cap 20,000 VND)
  */
 @Entity
 @Table(name = "vouchers")

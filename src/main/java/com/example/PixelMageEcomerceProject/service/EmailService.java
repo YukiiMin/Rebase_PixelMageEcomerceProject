@@ -21,9 +21,10 @@ public class EmailService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-
     @Value("${spring.mail.username}")
     private String fromEmail;
+
+    private final String displayName = "PixelMage Admin";
 
     /**
      * Gửi email verify account sau khi đăng ký LOCAL
@@ -179,13 +180,13 @@ public class EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(fromEmail);
+            helper.setFrom(fromEmail, displayName);
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(htmlContent, true); // true = html
             mailSender.send(message);
             log.info("Email sent to: {}", to);
-        } catch (MessagingException e) {
+        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
             // Log lỗi nhưng không throw — mail thất bại không nên crash flow chính
             log.error("Failed to send email to {}: {}", to, e.getMessage());
         }
