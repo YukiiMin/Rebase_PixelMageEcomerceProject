@@ -77,4 +77,16 @@ public class PackController {
                 .map(pack -> ResponseBase.ok(pack, "Pack found"))
                 .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND, "Pack not found"));
     }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a pack", description = "Hard delete a pack by its ID (Admin only)")
+    public ResponseEntity<ResponseBase<Void>> deletePack(@PathVariable Integer id) {
+        try {
+            packService.deletePack(id);
+            return ResponseBase.ok(null, "Pack deleted successfully");
+        } catch (Exception e) {
+            return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+    }
 }

@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -44,6 +45,25 @@ public class AchievementController {
     public ResponseEntity<ResponseBase<List<UserAchievementResponse>>> getMyAchievements(Authentication auth) {
         Integer userId = extractUserId(auth);
         return ResponseBase.ok(achievementService.getMyAchievements(userId), "My achievements retrieved successfully");
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    public ResponseEntity<ResponseBase<AchievementResponse>> createAchievement(@org.springframework.web.bind.annotation.RequestBody com.example.PixelMageEcomerceProject.dto.request.AchievementRequestDTO requestDTO) {
+        return ResponseBase.created(achievementService.createAchievement(requestDTO), "Achievement created successfully");
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    public ResponseEntity<ResponseBase<AchievementResponse>> updateAchievement(@org.springframework.web.bind.annotation.PathVariable Long id, @org.springframework.web.bind.annotation.RequestBody com.example.PixelMageEcomerceProject.dto.request.AchievementRequestDTO requestDTO) {
+        return ResponseBase.ok(achievementService.updateAchievement(id, requestDTO), "Achievement updated successfully");
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResponseBase<Void>> deleteAchievement(@org.springframework.web.bind.annotation.PathVariable Long id) {
+        achievementService.deleteAchievement(id);
+        return ResponseBase.ok(null, "Achievement deleted successfully");
     }
 
     private Integer extractUserId(Authentication auth) {

@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.PixelMageEcomerceProject.dto.request.CardTemplateRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.CardFramework;
 import com.example.PixelMageEcomerceProject.entity.CardTemplate;
+import com.example.PixelMageEcomerceProject.enums.ArcanaType;
+import com.example.PixelMageEcomerceProject.enums.CardTemplateRarity;
 import com.example.PixelMageEcomerceProject.repository.CardFrameworkRepository;
 import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.CardTemplateService;
@@ -16,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @RequiredArgsConstructor
@@ -101,6 +105,22 @@ public class CardTemplateServiceImpl implements CardTemplateService {
     @Cacheable("card-templates")
     public List<CardTemplate> getAllCardTemplates() {
         return cardTemplateRepository.findAll();
+    }
+
+    /** Pageable variant — NOT cached (page/sort params make cache keys ambiguous) */
+    @Override
+    public Page<CardTemplate> getAllCardTemplates(Pageable pageable) {
+        return cardTemplateRepository.findAll(pageable);
+    }
+
+    @Override
+    public Page<CardTemplate> getAllByRarity(CardTemplateRarity rarity, Pageable pageable) {
+        return cardTemplateRepository.findByRarity(rarity, pageable);
+    }
+
+    @Override
+    public Page<CardTemplate> getAllByArcana(ArcanaType arcanaType, Pageable pageable) {
+        return cardTemplateRepository.findByArcanaType(arcanaType, pageable);
     }
 
     @Override

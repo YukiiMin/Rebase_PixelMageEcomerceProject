@@ -3,6 +3,8 @@ package com.example.PixelMageEcomerceProject.service.interfaces;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.example.PixelMageEcomerceProject.dto.request.CardRequestDTO;
@@ -23,6 +25,7 @@ public interface CardService {
     Optional<Card> getCardById(Integer id);
 
     List<Card> getAllCards();
+    Page<Card> getAllCards(Pageable pageable);
 
     Optional<Card> getCardByNfcUid(String nfcUid);
 }

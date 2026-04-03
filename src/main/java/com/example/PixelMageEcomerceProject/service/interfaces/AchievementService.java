@@ -12,6 +12,11 @@ import com.example.PixelMageEcomerceProject.dto.response.UserAchievementResponse
  */
 public interface AchievementService {
 
+    // CRUD for Admin/Staff
+    AchievementResponse createAchievement(com.example.PixelMageEcomerceProject.dto.request.AchievementRequestDTO requestDTO);
+    AchievementResponse updateAchievement(Long id, com.example.PixelMageEcomerceProject.dto.request.AchievementRequestDTO requestDTO);
+    void deleteAchievement(Long id);
+
     /**
      * Called after linkCard — checks all unearned achievements and grants
      * those whose condition is now met.

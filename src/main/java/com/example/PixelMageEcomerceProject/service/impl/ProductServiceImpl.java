@@ -2,6 +2,9 @@ package com.example.PixelMageEcomerceProject.service.impl;
 
 import com.example.PixelMageEcomerceProject.dto.response.ProductResponse;
 import com.example.PixelMageEcomerceProject.mapper.ProductMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -22,6 +25,10 @@ public class ProductServiceImpl implements ProductService {
     private final ProductMapper productMapper;
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products",     allEntries = true),
+        @CacheEvict(value = "product-by-id", allEntries = true)
+    })
     public ProductResponse createProduct(ProductRequestDTO productRequestDTO) {
         Product product = new Product();
         product.setName(productRequestDTO.getName());
@@ -33,6 +40,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products",      allEntries = true),
+        @CacheEvict(value = "product-by-id", key = "#id")
+    })
     public ProductResponse updateProduct(Integer id, ProductRequestDTO productRequestDTO) {
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
@@ -51,6 +62,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products",      allEntries = true),
+        @CacheEvict(value = "product-by-id", key = "#id")
+    })
     public void deleteProduct(Integer id) {
         if (!productRepository.existsById(id)) {
             throw new RuntimeException("Product not found with id: " + id);
@@ -59,6 +74,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(value = "product-by-id", key = "#id")
     public ProductResponse getProductById(Integer id) {
         return productRepository.findById(id)
                 .map(productMapper::toProductResponse)
@@ -66,6 +82,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(value = "products")
     public List<ProductResponse> getAllProducts() {
         return productRepository.findAll().stream()
                 .map(productMapper::toProductResponse)

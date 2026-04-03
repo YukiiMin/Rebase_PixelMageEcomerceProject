@@ -1,7 +1,9 @@
 package com.example.PixelMageEcomerceProject.controller;
 
-import java.util.List;
 
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -76,12 +78,13 @@ public class CardController {
         }
 
         @GetMapping("/list")
-        @Operation(summary = "Get all cards list", description = "Retrieve all card products")
+        @Operation(summary = "Get all cards (paginated)",
+                   description = "Supports pagination: ?page=0&size=20&sort=cardId,desc. FE controls page size.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Cards retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<Card>>> getAllCards() {
-                List<Card> cards = cardService.getAllCards();
+        public ResponseEntity<ResponseBase<Page<Card>>> getAllCards(Pageable pageable) {
+                Page<Card> cards = cardService.getAllCards(pageable);
                 return ResponseBase.ok(cards, "Cards retrieved successfully");
         }
 

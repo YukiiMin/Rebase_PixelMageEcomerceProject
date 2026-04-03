@@ -1,6 +1,6 @@
 package com.example.PixelMageEcomerceProject.controller;
 
-import java.util.List;
+
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.request.ChangePasswordRequestDTO;
@@ -273,12 +275,42 @@ public class AccountController {
         // =========================================================
 
         @GetMapping("/list")
-        @Operation(summary = "Lấy danh sách tất cả accounts")
-        public ResponseEntity<ResponseBase<List<AccountResponse.Summary>>> getAllAccounts() {
-                List<AccountResponse.Summary> responses = accountService.getAllAccounts().stream()
-                                .map(accountMapper::toAccountSummaryResponse)
-                                .toList();
-                return ResponseBase.ok(responses, "Accounts retrieved successfully");
+        @Operation(summary = "Lấy danh sách tất cả accounts with pagination")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+        public ResponseEntity<ResponseBase<org.springframework.data.domain.Page<AccountResponse.Summary>>> getAllAccounts(
+                org.springframework.data.domain.Pageable pageable,
+                @RequestParam(required = false) String role) {
+                
+                org.springframework.data.domain.Page<AccountResponse.Summary> page = accountService.getAllAccounts(pageable, role)
+                        .map(accountMapper::toAccountSummaryResponse);
+                        
+                return ResponseBase.ok(page, "Accounts retrieved successfully");
+        }
+
+        @PostMapping("/staff")
+        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "Create Staff Account", description = "Admin only. Creates an account with STAFF role directly.")
+        public ResponseEntity<ResponseBase<AccountResponse>> createStaffAccount(@RequestBody RegisterRequestDTO dto) {
+                try {
+                        dto.setRoleName("STAFF");
+                        return ResponseBase.created(
+                                        accountMapper.toAccountResponse(accountService.createAccount(dto)),
+                                        "Staff account created successfully.");
+                } catch (RuntimeException e) {
+                        return ResponseBase.error(HttpStatus.BAD_REQUEST, e.getMessage());
+                }
+        }
+
+        @org.springframework.web.bind.annotation.PatchMapping("/{id}/status")
+        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "Toggle Account Active Status", description = "Admin only. Activating/Deactivating an account. If deactivated, token is revoked.")
+        public ResponseEntity<ResponseBase<AccountResponse>> toggleAccountStatus(@PathVariable Integer id) {
+                try {
+                        Account updated = accountService.toggleAccountStatus(id);
+                        return ResponseBase.ok(accountMapper.toAccountResponse(updated), "Account status updated.");
+                } catch (RuntimeException e) {
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
+                }
         }
 
         @GetMapping("/{id}")

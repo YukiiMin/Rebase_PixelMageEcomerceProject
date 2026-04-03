@@ -1,7 +1,9 @@
 package com.example.PixelMageEcomerceProject.controller;
 
-import java.util.List;
 
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -57,12 +59,14 @@ public class InventoryController {
         }
 
         @GetMapping
-        @Operation(summary = "Get all inventory", description = "Retrieve all inventory records")
+        @Operation(summary = "Get all inventory (paginated)",
+                   description = "Supports pagination: ?page=0&size=20&sort=inventoryId,desc")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Successfully retrieved inventory", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<InventoryResponse>>> getAllInventory() {
-                List<InventoryResponse> inventories = inventoryMapper.toResponses(inventoryService.getAllInventories());
+        public ResponseEntity<ResponseBase<Page<InventoryResponse>>> getAllInventory(Pageable pageable) {
+                Page<InventoryResponse> inventories = inventoryService.getAllInventories(pageable)
+                        .map(inventoryMapper::toResponse);
                 return ResponseBase.ok(inventories, "Inventory retrieved successfully");
         }
 

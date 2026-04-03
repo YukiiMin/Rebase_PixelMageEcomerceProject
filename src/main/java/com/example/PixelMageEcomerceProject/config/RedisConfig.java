@@ -67,10 +67,22 @@ public class RedisConfig {
 
         // TTL per cache name
         Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
-        cacheConfigs.put("card-templates",       defaultConfig.entryTtl(Duration.ofHours(24)));
-        cacheConfigs.put("card-template-by-id",  defaultConfig.entryTtl(Duration.ofHours(6)));
-        cacheConfigs.put("spreads",              defaultConfig.entryTtl(Duration.ofHours(24)));
-        cacheConfigs.put("public-collections",   defaultConfig.entryTtl(Duration.ofHours(1)));
+        cacheConfigs.put("card-templates",           defaultConfig.entryTtl(Duration.ofHours(24)));
+        cacheConfigs.put("card-template-by-id",       defaultConfig.entryTtl(Duration.ofHours(6)));
+        cacheConfigs.put("spreads",                   defaultConfig.entryTtl(Duration.ofHours(24)));
+        cacheConfigs.put("public-collections",        defaultConfig.entryTtl(Duration.ofHours(1)));
+        // CardContent caches — 6h TTL, evicted on CUD operations
+        cacheConfigs.put("card-contents-active",      defaultConfig.entryTtl(Duration.ofHours(6)));
+        cacheConfigs.put("card-contents-all",         defaultConfig.entryTtl(Duration.ofHours(6)));
+        // Product catalog — ít thay đổi, 1h TTL
+        cacheConfigs.put("products",                  defaultConfig.entryTtl(Duration.ofHours(1)));
+        cacheConfigs.put("product-by-id",             defaultConfig.entryTtl(Duration.ofHours(1)));
+        // Pack inventory — thay đổi khi staff tạo/bán, 30 phút TTL
+        cacheConfigs.put("packs",                     defaultConfig.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigs.put("packs-by-status",           defaultConfig.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigs.put("packs-by-product-status",   defaultConfig.entryTtl(Duration.ofMinutes(30)));
+        // Achievement definitions — ít thay đổi, 6h TTL
+        cacheConfigs.put("achievement-definitions",   defaultConfig.entryTtl(Duration.ofHours(6)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig.entryTtl(Duration.ofHours(1)))

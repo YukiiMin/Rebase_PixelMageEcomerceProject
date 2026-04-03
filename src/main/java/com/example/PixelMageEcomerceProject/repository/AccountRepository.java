@@ -19,4 +19,9 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
     boolean existsByEmail(String email);
 
     void deleteByEmail(String email);
+
+    org.springframework.data.domain.Page<Account> findAll(org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT a FROM Account a WHERE lower(a.role.roleName) = lower(:roleName)")
+    org.springframework.data.domain.Page<Account> findByRoleName(String roleName, org.springframework.data.domain.Pageable pageable);
 }

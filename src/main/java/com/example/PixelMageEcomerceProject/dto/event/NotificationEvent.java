@@ -67,4 +67,54 @@ public class NotificationEvent {
                 ))
                 .build();
     }
+
+    // ── Admin Dashboard real-time events ────────────────────────────────────
+
+    /**
+     * Broadcast khi User mới đăng ký thành công.
+     * Topic: /topic/admin/dashboard
+     */
+    public static NotificationEvent newUserRegistered(Integer userId, String name, String email) {
+        return NotificationEvent.builder()
+                .type("NEW_USER_REGISTERED")
+                .userId(userId)
+                .payload(Map.of(
+                        "userId", userId,
+                        "name",   name != null ? name : "",
+                        "email",  email != null ? email : ""
+                ))
+                .build();
+    }
+
+    /**
+     * Broadcast khi User bắt đầu một phiên Tarot.
+     * Topic: /topic/admin/dashboard
+     * mode: "EXPLORE" | "YOUR_DECK"
+     */
+    public static NotificationEvent tarotSessionStarted(Integer userId, Integer sessionId, String mode, String spreadName) {
+        return NotificationEvent.builder()
+                .type("TAROT_SESSION_STARTED")
+                .userId(userId)
+                .payload(Map.of(
+                        "sessionId",  sessionId,
+                        "mode",       mode != null ? mode : "EXPLORE",
+                        "spreadName", spreadName != null ? spreadName : ""
+                ))
+                .build();
+    }
+
+    /**
+     * Broadcast khi phiên Tarot hoàn thành (AI trả lời xong).
+     * Topic: /topic/admin/dashboard
+     */
+    public static NotificationEvent tarotSessionCompleted(Integer userId, Integer sessionId, String mode) {
+        return NotificationEvent.builder()
+                .type("TAROT_SESSION_COMPLETED")
+                .userId(userId)
+                .payload(Map.of(
+                        "sessionId", sessionId,
+                        "mode",      mode != null ? mode : "EXPLORE"
+                ))
+                .build();
+    }
 }

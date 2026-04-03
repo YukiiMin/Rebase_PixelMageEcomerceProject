@@ -3,6 +3,8 @@ package com.example.PixelMageEcomerceProject.controller;
 import java.util.List;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.annotation.Secured;
@@ -54,16 +56,15 @@ public class CardTemplateController {
 
     @GetMapping
     @Operation(
-        summary = "Get all active CardTemplates (Public — Gallery listing)",
-        description = "Returns all active templates for the Card Gallery page. Auth NOT required. Results are Redis-cached."
+        summary = "Get all active CardTemplates (Public — Gallery listing, paginated)",
+        description = "Supports pagination: ?page=0&size=12&sort=name,asc. FE controls page size. Results NOT cached when paginated."
     )
     @ApiResponse(responseCode = "200", description = "Templates retrieved",
                  content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-    public ResponseEntity<ResponseBase<List<CardTemplateResponse.Summary>>> getAllCardTemplates() {
-        List<CardTemplateResponse.Summary> list = cardTemplateService.getAllCardTemplates().stream()
-                .map(cardTemplateMapper::toSummaryResponse)
-                .toList();
-        return ResponseBase.ok(list, "Card templates retrieved successfully");
+    public ResponseEntity<ResponseBase<Page<CardTemplateResponse.Summary>>> getAllCardTemplates(Pageable pageable) {
+        Page<CardTemplateResponse.Summary> page = cardTemplateService.getAllCardTemplates(pageable)
+                .map(cardTemplateMapper::toSummaryResponse);
+        return ResponseBase.ok(page, "Card templates retrieved successfully");
     }
 
     @GetMapping("/{id}")
@@ -110,29 +111,23 @@ public class CardTemplateController {
     }
 
     @GetMapping("/by-rarity/{rarity}")
-    @Operation(summary = "Filter templates by rarity (Public)",
-               description = "rarity values: COMMON | RARE | LEGENDARY")
-    public ResponseEntity<ResponseBase<List<CardTemplateResponse.Summary>>> getByRarity(
-            @PathVariable CardTemplateRarity rarity) {
-        List<CardTemplate> all = cardTemplateService.getAllCardTemplates();
-        List<CardTemplateResponse.Summary> filtered = all.stream()
-                .filter(t -> rarity.equals(t.getRarity()))
-                .map(cardTemplateMapper::toSummaryResponse)
-                .toList();
-        return ResponseBase.ok(filtered, "Templates filtered by rarity: " + rarity);
+    @Operation(summary = "Filter templates by rarity (Public, paginated)",
+               description = "rarity: COMMON|RARE|LEGENDARY. Supports ?page=0&size=12&sort=name,asc")
+    public ResponseEntity<ResponseBase<Page<CardTemplateResponse.Summary>>> getByRarity(
+            @PathVariable CardTemplateRarity rarity, Pageable pageable) {
+        Page<CardTemplateResponse.Summary> page = cardTemplateService.getAllByRarity(rarity, pageable)
+                .map(cardTemplateMapper::toSummaryResponse);
+        return ResponseBase.ok(page, "Templates filtered by rarity: " + rarity);
     }
 
     @GetMapping("/by-arcana/{arcanaType}")
-    @Operation(summary = "Filter templates by arcana type (Public)",
-               description = "arcanaType values: MAJOR | MINOR")
-    public ResponseEntity<ResponseBase<List<CardTemplateResponse.Summary>>> getByArcana(
-            @PathVariable ArcanaType arcanaType) {
-        List<CardTemplate> all = cardTemplateService.getAllCardTemplates();
-        List<CardTemplateResponse.Summary> filtered = all.stream()
-                .filter(t -> arcanaType.equals(t.getArcanaType()))
-                .map(cardTemplateMapper::toSummaryResponse)
-                .toList();
-        return ResponseBase.ok(filtered, "Templates filtered by arcana type: " + arcanaType);
+    @Operation(summary = "Filter templates by arcana type (Public, paginated)",
+               description = "arcanaType: MAJOR|MINOR. Supports ?page=0&size=12&sort=name,asc")
+    public ResponseEntity<ResponseBase<Page<CardTemplateResponse.Summary>>> getByArcana(
+            @PathVariable ArcanaType arcanaType, Pageable pageable) {
+        Page<CardTemplateResponse.Summary> page = cardTemplateService.getAllByArcana(arcanaType, pageable)
+                .map(cardTemplateMapper::toSummaryResponse);
+        return ResponseBase.ok(page, "Templates filtered by arcana type: " + arcanaType);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

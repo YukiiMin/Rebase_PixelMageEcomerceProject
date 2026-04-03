@@ -3,6 +3,9 @@ package com.example.PixelMageEcomerceProject.service.impl;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -122,6 +125,11 @@ public class CardServiceImpl implements CardService {
     @Override
     public List<Card> getAllCards() {
         return cardRepository.findAll();
+    }
+
+    @Override
+    public Page<Card> getAllCards(Pageable pageable) {
+        return cardRepository.findAll(pageable);
     }
 
     @Override

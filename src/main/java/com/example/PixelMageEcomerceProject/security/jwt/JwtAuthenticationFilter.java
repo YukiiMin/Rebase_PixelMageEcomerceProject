@@ -39,20 +39,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
+        final String requestURI = request.getRequestURI();
+        final String method = request.getMethod();
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.trace("[JWT] No Bearer token — URI={} METHOD={}", requestURI, method);
             filterChain.doFilter(request, response);
             return;
         }
 
         final String jwt = authHeader.substring(7);
-        final String username = jwtTokenProvider.extractUsername(jwt);
+        String username = null;
+        try {
+            username = jwtTokenProvider.extractUsername(jwt);
+        } catch (Exception e) {
+            log.warn("[JWT] Failed to extract username from token — URI={} error={}", requestURI, e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             // Kiểm tra blacklist trước khi query DB
             if (tokenService.isAccessTokenBlacklisted(jwt)) {
-                log.warn("Blacklisted token used by: {}", username);
+                log.warn("[JWT] Blacklisted token used by: {} — URI={}", username, requestURI);
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -68,7 +78,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                log.debug("[JWT] Auth set for user={} authorities={} URI={}", username, authorities, requestURI);
+            } else {
+                log.warn("[JWT] Token validation FAILED for user={} — URI={}", username, requestURI);
             }
+        } else if (username != null) {
+            log.trace("[JWT] Auth already set for user={} — URI={}", username, requestURI);
         }
 
         filterChain.doFilter(request, response);

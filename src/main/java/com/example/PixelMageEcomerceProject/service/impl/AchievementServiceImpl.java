@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -158,5 +159,50 @@ public class AchievementServiceImpl implements AchievementService {
                 yield completedCount >= achievement.getConditionValue();
             }
         };
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "achievement-definitions", allEntries = true)
+    public AchievementResponse createAchievement(com.example.PixelMageEcomerceProject.dto.request.AchievementRequestDTO requestDTO) {
+        Achievement achievement = new Achievement();
+        achievement.setName(requestDTO.getName());
+        achievement.setDescription(requestDTO.getDescription());
+        achievement.setConditionType(requestDTO.getConditionType());
+        achievement.setConditionValue(requestDTO.getConditionValue());
+        achievement.setPmPointReward(requestDTO.getPmPointReward() != null ? requestDTO.getPmPointReward() : 0);
+        achievement.setIsHidden(requestDTO.getIsHidden() != null ? requestDTO.getIsHidden() : false);
+        
+        Achievement saved = achievementRepository.save(achievement);
+        return achievementMapper.toAchievementResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "achievement-definitions", allEntries = true)
+    public AchievementResponse updateAchievement(Long id, com.example.PixelMageEcomerceProject.dto.request.AchievementRequestDTO requestDTO) {
+        Achievement achievement = achievementRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Achievement not found with id: " + id));
+
+        if (requestDTO.getName() != null) achievement.setName(requestDTO.getName());
+        if (requestDTO.getDescription() != null) achievement.setDescription(requestDTO.getDescription());
+        if (requestDTO.getConditionType() != null) achievement.setConditionType(requestDTO.getConditionType());
+        if (requestDTO.getConditionValue() != null) achievement.setConditionValue(requestDTO.getConditionValue());
+        if (requestDTO.getPmPointReward() != null) achievement.setPmPointReward(requestDTO.getPmPointReward());
+        if (requestDTO.getIsHidden() != null) achievement.setIsHidden(requestDTO.getIsHidden());
+
+        Achievement saved = achievementRepository.save(achievement);
+        return achievementMapper.toAchievementResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "achievement-definitions", allEntries = true)
+    public void deleteAchievement(Long id) {
+        Achievement achievement = achievementRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Achievement not found with id: " + id));
+        // Note: Soft delete is better, but since is_active is not set in Entity, we hard delete.
+        // Doing so will cascade to user_achievements if DB allows, otherwise it will fail constraint.
+        achievementRepository.delete(achievement);
     }
 }

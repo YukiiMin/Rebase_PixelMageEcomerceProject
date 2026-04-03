@@ -161,6 +161,13 @@ public class GlobalExceptionHandler {
                 return ResponseBase.error(HttpStatus.BAD_REQUEST, "Invalid request parameters: " + ex.getMessage());
         }
 
+        // ── Login Rate Limit handler ─────────────────────────────────────────────
+        @ExceptionHandler(RateLimitExceededException.class)
+        public ResponseEntity<ResponseBase<Void>> handleRateLimitExceeded(RateLimitExceededException ex) {
+                log.warn("[RATE-LIMIT] Request blocked: {}", ex.getMessage());
+                return ResponseBase.error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        }
+
         @ExceptionHandler(RuntimeException.class)
         public ResponseEntity<ResponseBase<Void>> handleRuntimeException(RuntimeException ex, WebRequest request) {
                 log.error("Runtime error: {}", ex.getMessage(), ex);

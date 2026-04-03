@@ -9,6 +9,8 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.example.PixelMageEcomerceProject.dto.request.AdminCollectionItemRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.AdminCollectionRequestDTO;
@@ -110,6 +112,12 @@ public class CollectionServiceImpl implements CollectionService {
     public List<com.example.PixelMageEcomerceProject.dto.response.CollectionResponse> getPublicCollections() {
         return cardCollectionRepository.findAllVisibleCollections(LocalDateTime.now())
                 .stream().map(collectionMapper::toCollectionResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<com.example.PixelMageEcomerceProject.dto.response.CollectionResponse> getPublicCollections(Pageable pageable) {
+        return cardCollectionRepository.findAllPublicCollections(pageable)
+                .map(collectionMapper::toCollectionResponse);
     }
 
     @Override

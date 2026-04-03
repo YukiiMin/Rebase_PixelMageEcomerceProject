@@ -8,7 +8,7 @@ import com.example.PixelMageEcomerceProject.dto.request.ResetPasswordRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.LoginRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Account;
 
-import java.util.List;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -30,7 +30,9 @@ public interface AccountService {
 
     Optional<Account> getAccountByEmail(String email);
 
-    List<Account> getAllAccounts();
+    org.springframework.data.domain.Page<Account> getAllAccounts(org.springframework.data.domain.Pageable pageable, String roleName);
+
+    Account toggleAccountStatus(Integer customerId);
 
     boolean existsByEmail(String email);
 

@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +46,11 @@ public class PackServiceImpl implements PackService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "packs",                        allEntries = true),
+        @CacheEvict(value = "packs-by-status",              allEntries = true),
+        @CacheEvict(value = "packs-by-product-status",      allEntries = true)
+    })
     public PackResponse createPack(PackRequestDTO requestDTO) {
         Product product = productRepository.findById(requestDTO.getProductId())
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + requestDTO.getProductId()));
@@ -111,6 +119,11 @@ public class PackServiceImpl implements PackService {
 
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "packs",                        allEntries = true),
+        @CacheEvict(value = "packs-by-status",              allEntries = true),
+        @CacheEvict(value = "packs-by-product-status",      allEntries = true)
+    })
     public PackResponse updatePackStatus(Integer packId, PackStatus status) {
         Pack pack = packRepository.findById(packId)
                 .orElseThrow(() -> new RuntimeException("Pack not found: " + packId));
@@ -124,21 +137,29 @@ public class PackServiceImpl implements PackService {
     }
 
     @Override
+    @Cacheable(value = "packs")
     public List<PackResponse> getAllPacks() {
         return packRepository.findAll().stream().map(packMapper::toResponse).toList();
     }
 
     @Override
+    @Cacheable(value = "packs-by-status", key = "#status")
     public List<PackResponse> getPacksByStatus(PackStatus status) {
         return packRepository.findByStatus(status).stream().map(packMapper::toResponse).toList();
     }
 
     @Override
+    @Cacheable(value = "packs-by-product-status", key = "#productId + '-' + #status")
     public List<PackResponse> getPacksByProductAndStatus(Integer productId, PackStatus status) {
         return packRepository.findByProductProductIdAndStatus(productId, status).stream().map(packMapper::toResponse).toList();
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "packs",                        allEntries = true),
+        @CacheEvict(value = "packs-by-status",              allEntries = true),
+        @CacheEvict(value = "packs-by-product-status",      allEntries = true)
+    })
     public void deletePack(Integer id) {
         packRepository.deleteById(id);
     }

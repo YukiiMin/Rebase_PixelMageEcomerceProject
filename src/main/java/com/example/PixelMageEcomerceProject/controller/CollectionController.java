@@ -2,6 +2,8 @@ package com.example.PixelMageEcomerceProject.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -124,12 +126,13 @@ public class CollectionController {
         }
 
         @GetMapping("/public")
-        @Operation(summary = "Get public collections", description = "Retrieve all public collections from all users")
+        @Operation(summary = "Get public collections (paginated)",
+                   description = "Retrieve all public collections. Supports ?page=0&size=12&sort=collectionId,desc")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Public collections retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
-        public ResponseEntity<ResponseBase<List<CollectionResponse>>> getPublicCollections() {
-                List<CollectionResponse> collections = collectionService.getPublicCollections();
+        public ResponseEntity<ResponseBase<Page<CollectionResponse>>> getPublicCollections(Pageable pageable) {
+                Page<CollectionResponse> collections = collectionService.getPublicCollections(pageable);
                 return ResponseBase.ok(collections, "Public collections retrieved successfully");
         }
 

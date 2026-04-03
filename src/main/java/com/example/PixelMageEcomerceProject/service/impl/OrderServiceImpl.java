@@ -36,6 +36,9 @@ import com.example.PixelMageEcomerceProject.service.interfaces.OrderService;
 import com.example.PixelMageEcomerceProject.service.interfaces.PaymentService;
 import com.example.PixelMageEcomerceProject.service.interfaces.RedisLockService;
 import com.example.PixelMageEcomerceProject.service.interfaces.VoucherService;
+import com.example.PixelMageEcomerceProject.service.interfaces.WebSocketNotificationService;
+import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
+import com.example.PixelMageEcomerceProject.service.model.InitPaymentResult;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,12 +57,23 @@ public class OrderServiceImpl implements OrderService {
     private final VoucherService voucherService;
     private final PlatformTransactionManager transactionManager;
     private final OrderMapper orderMapper;
+    private final WebSocketNotificationService wsNotificationService;
 
     @Override
     public OrderResponse createOrder(OrderRequestDTO orderRequestDTO) {
+        log.info("[ORDER] createOrder start: customerId={}, itemCount={}, totalAmount={}, voucherCode={}",
+                orderRequestDTO.getCustomerId(),
+                orderRequestDTO.getOrderItems() != null ? orderRequestDTO.getOrderItems().size() : 0,
+                orderRequestDTO.getTotalAmount(),
+                orderRequestDTO.getVoucherCode());
+
         Account account = accountRepository.findById(orderRequestDTO.getCustomerId())
-                .orElseThrow(
-                        () -> new RuntimeException("Account not found with id: " + orderRequestDTO.getCustomerId()));
+                .orElseThrow(() -> {
+                    log.error("[ORDER] Account not found: customerId={}", orderRequestDTO.getCustomerId());
+                    return new RuntimeException("Account not found with id: " + orderRequestDTO.getCustomerId());
+                });
+        log.debug("[ORDER] Account resolved: email={}, role={}", account.getEmail(),
+                account.getRole() != null ? account.getRole().getRoleName() : "null");
 
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
@@ -73,14 +87,16 @@ public class OrderServiceImpl implements OrderService {
                         String lockKey = "lock:pack:" + itemDto.getPackId();
                         boolean locked;
                         try {
-                            locked = redisLockService.tryLock(lockKey, 30); // Use a safe timeout
+                            locked = redisLockService.tryLock(lockKey, 30);
                         } catch (Exception e) {
-                            log.error("[LOCK] Redis unavailable for pack {}: {}", itemDto.getPackId(), e.getMessage());
+                            log.error("[ORDER][LOCK] Redis unavailable for pack {}: {}", itemDto.getPackId(), e.getMessage());
                             throw new RedisUnavailableException("Dịch vụ đặt hàng tạm thời không khả dụng. Vui lòng thử lại sau.");
                         }
                         if (!locked) {
+                            log.warn("[ORDER][LOCK] Pack {} is already locked by another request", itemDto.getPackId());
                             throw new PackReservationException("Pack " + itemDto.getPackId() + " đang được người khác đặt. Vui lòng thử lại sau.");
                         }
+                        log.debug("[ORDER][LOCK] Lock acquired for pack {}", itemDto.getPackId());
                         acquiredLocks.add(lockKey);
                     }
                 }
@@ -98,18 +114,21 @@ public class OrderServiceImpl implements OrderService {
                 order.setNotes(orderRequestDTO.getNotes());
 
                 if (orderRequestDTO.getVoucherCode() != null && !orderRequestDTO.getVoucherCode().trim().isEmpty()) {
+                    log.debug("[ORDER] Applying voucher: code={}", orderRequestDTO.getVoucherCode());
                     BigDecimal discount = voucherService.redeemVoucher(orderRequestDTO.getVoucherCode(),
                             orderRequestDTO.getCustomerId(), orderRequestDTO.getTotalAmount());
                     BigDecimal newTotal = orderRequestDTO.getTotalAmount().subtract(discount);
                     if (newTotal.compareTo(BigDecimal.ZERO) < 0) {
                         newTotal = BigDecimal.ZERO;
                     }
+                    log.info("[ORDER] Voucher applied: discount={}, newTotal={}", discount, newTotal);
                     order.setTotalAmount(newTotal);
                 } else {
                     order.setTotalAmount(orderRequestDTO.getTotalAmount());
                 }
 
                 Order savedOrder = orderRepository.save(order);
+                log.info("[ORDER] Order saved: orderId={}", savedOrder.getOrderId());
 
                 if (orderRequestDTO.getOrderItems() != null) {
                     List<OrderItem> items = new ArrayList<>();
@@ -123,19 +142,27 @@ public class OrderServiceImpl implements OrderService {
 
                         if (itemDto.getPackId() != null) {
                             Pack pack = packRepository.findById(itemDto.getPackId())
-                                    .orElseThrow(() -> new RuntimeException("Pack not found: " + itemDto.getPackId()));
+                                    .orElseThrow(() -> {
+                                        log.error("[ORDER] Pack not found: packId={}", itemDto.getPackId());
+                                        return new RuntimeException("Pack not found: " + itemDto.getPackId());
+                                    });
+                            log.debug("[ORDER] Pack {} status = {}", pack.getPackId(), pack.getStatus());
                             if (!PackStatus.STOCKED.equals(pack.getStatus())) {
+                                log.warn("[ORDER] Pack {} is not STOCKED, current status={}", pack.getPackId(), pack.getStatus());
                                 throw new RuntimeException("Pack " + itemDto.getPackId() + " is not STOCKED anymore");
                             }
                             pack.setStatus(PackStatus.RESERVED);
                             packRepository.save(pack);
                             item.setPack(pack);
+                            log.debug("[ORDER] Pack {} reserved", pack.getPackId());
                         }
                         items.add(item);
                         orderItemRepository.save(item);
                     }
                     savedOrder.setOrderItems(items);
                 }
+
+                log.info("[ORDER] createOrder complete: orderId={}, totalAmount={}", savedOrder.getOrderId(), savedOrder.getTotalAmount());
                 return orderMapper.toOrderResponse(savedOrder);
             });
 
@@ -143,6 +170,7 @@ public class OrderServiceImpl implements OrderService {
             // Ensure locks are released AFTER transaction commit/rollback
             for (String lockKey : acquiredLocks) {
                 redisLockService.releaseLock(lockKey);
+                log.debug("[ORDER][LOCK] Released lock: {}", lockKey);
             }
         }
     }
@@ -153,7 +181,7 @@ public class OrderServiceImpl implements OrderService {
         OrderResponse createdOrder = createOrder(orderRequestDTO);
 
         // Then initialize payment using the active gateway
-        com.example.PixelMageEcomerceProject.service.model.InitPaymentResult paymentResult = paymentService
+        InitPaymentResult paymentResult = paymentService
                 .initiatePayment(
                         createdOrder.getOrderId(),
                         createdOrder.getTotalAmount(),
@@ -292,6 +320,16 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus(OrderStatus.COMPLETED);
             orderRepository.save(order);
             log.info("[EVENT] Order {} is now COMPLETED", order.getOrderId());
+
+            // Push real-time notification đến user
+            Integer userId = order.getAccount() != null ? order.getAccount().getCustomerId() : null;
+            if (userId != null) {
+                wsNotificationService.pushToUser(userId,
+                        NotificationEvent.paymentConfirmed(userId, order.getOrderId(), event.getTransactionId()));
+            }
+            // Broadcast đến admin dashboard (/topic/admin/dashboard)
+            wsNotificationService.pushToTopic("admin/dashboard",
+                    NotificationEvent.orderStatusChanged(userId, order.getOrderId(), "COMPLETED"));
         }
     }
 }

@@ -38,6 +38,8 @@ import com.example.PixelMageEcomerceProject.repository.SpreadRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.CardTemplateService;
 import com.example.PixelMageEcomerceProject.service.interfaces.TarotReadingService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
+import com.example.PixelMageEcomerceProject.service.interfaces.WebSocketNotificationService;
+import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +63,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
     private final CardTemplateService cardTemplateService;
     private final UserInventoryService userInventoryService;
     private final SpreadMapper spreadMapper;
+    private final WebSocketNotificationService wsNotificationService;
 
     @Value("${OPENAI_API_KEY:}")
     private String openAiApiKey;
@@ -151,6 +154,15 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         response.put("sessionId", savedSession.getSessionId());
         response.put("status", savedSession.getStatus());
         response.put("spreadName", spread.getName());
+
+        // Broadcast đến admin dashboard — non-fatal
+        wsNotificationService.pushToTopic("admin/dashboard",
+                NotificationEvent.tarotSessionStarted(
+                        accountId,
+                        savedSession.getSessionId(),
+                        savedSession.getMode().name(),
+                        spread.getName()));
+
         return response;
     }
 
@@ -302,6 +314,13 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         // 4. Legal Disclaimer attached to all interpretation
         response.put("legalDisclaimer",
                 "Disclaimer: This Tarot reading is for entertainment purposes only and should not replace professional medical, legal, or financial advice.");
+
+        // Broadcast hoàn thành phiên Tarot đến admin dashboard — non-fatal
+        wsNotificationService.pushToTopic("admin/dashboard",
+                NotificationEvent.tarotSessionCompleted(
+                        session.getAccount().getCustomerId(),
+                        sessionId,
+                        session.getMode().name()));
 
         return response;
     }

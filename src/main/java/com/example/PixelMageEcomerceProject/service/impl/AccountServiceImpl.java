@@ -1,6 +1,6 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
-import java.util.List;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -19,19 +19,27 @@ import com.example.PixelMageEcomerceProject.dto.request.ChangePasswordRequestDTO
 import com.example.PixelMageEcomerceProject.dto.request.ForgotPasswordRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.ResetPasswordRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.LoginRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Role;
+import com.example.PixelMageEcomerceProject.exceptions.RateLimitExceededException;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.RoleRepository;
 import com.example.PixelMageEcomerceProject.security.service.AuthenticationService;
 import com.example.PixelMageEcomerceProject.security.service.TokenService;
 import com.example.PixelMageEcomerceProject.service.EmailService;
 import com.example.PixelMageEcomerceProject.service.interfaces.AccountService;
+import com.example.PixelMageEcomerceProject.service.interfaces.WebSocketNotificationService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
@@ -40,6 +48,12 @@ public class AccountServiceImpl implements AccountService {
     private final AuthenticationService authenticationService;
     private final TokenService tokenService;
     private final EmailService emailService;
+    private final WebSocketNotificationService wsNotificationService;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    /** Rate limit: tối đa 5 lần login thất bại trong 15 phút */
+    private static final int    LOGIN_MAX_ATTEMPTS  = 5;
+    private static final long   LOGIN_WINDOW_MINUTES = 15;
 
     @Value("${google.client-id}")
     private String googleClientId;
@@ -74,6 +88,11 @@ public class AccountServiceImpl implements AccountService {
         // Tạo verification token và gửi mail — @Async nên không block response
         String verifyToken = tokenService.generateVerificationToken(saved.getEmail());
         emailService.sendVerificationEmail(saved.getEmail(), saved.getName(), verifyToken);
+
+        // Broadcast real-time đến admin dashboard
+        wsNotificationService.pushToTopic("admin/dashboard",
+                NotificationEvent.newUserRegistered(
+                        saved.getCustomerId(), saved.getName(), saved.getEmail()));
 
         return saved;
     }
@@ -122,8 +141,23 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public Map<String, Object> loginAccount(LoginRequestDTO dto) {
+        String rateLimitKey = "login:attempts:" + dto.getEmail();
+
+        // ── Kiểm tra rate limit trước khi chạm vào DB ────────────────────
+        String currentCount = stringRedisTemplate.opsForValue().get(rateLimitKey);
+        if (currentCount != null && Integer.parseInt(currentCount) >= LOGIN_MAX_ATTEMPTS) {
+            log.warn("[RATE-LIMIT] Login blocked for email={} after {} failed attempts", dto.getEmail(), currentCount);
+            throw new RateLimitExceededException(
+                    "Tài khoản tạm thời bị khóa do quá nhiều lần đăng nhập thất bại. "
+                    + "Vui lòng thử lại sau " + LOGIN_WINDOW_MINUTES + " phút.");
+        }
+        // ────────────────────────────────────────────────────
+
         Account account = accountRepository.findByEmail(dto.getEmail())
-                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+                .orElseThrow(() -> {
+                    recordFailedAttempt(rateLimitKey);
+                    return new BadCredentialsException("Invalid email or password");
+                });
 
         // Check email verified trước khi check password (bảo mật: không lộ thông tin)
         if (!Boolean.TRUE.equals(account.getEmailVerified())) {
@@ -131,8 +165,12 @@ public class AccountServiceImpl implements AccountService {
         }
 
         if (!passwordEncoder.matches(dto.getPassword(), account.getPassword())) {
+            recordFailedAttempt(rateLimitKey);
             throw new BadCredentialsException("Invalid email or password");
         }
+
+        // Login thành công → xoá counter
+        stringRedisTemplate.delete(rateLimitKey);
 
         String accessToken = authenticationService.generateToken(account);
         // Mỗi lần login tạo refresh token mới, token cũ tự bị revoke
@@ -142,6 +180,21 @@ public class AccountServiceImpl implements AccountService {
                 "accessToken", accessToken,
                 "refreshToken", refreshToken,
                 "account", account);
+    }
+
+    /**
+     * Ghi nhận lượt đăng nhập thất bại vào Redis.<br>
+     * Lần đầu tiên: set expire = LOGIN_WINDOW_MINUTES.<br>
+     * Các lần sau: chỉ incr, giữ nguyên TTL gốc (để window không bị reset).
+     */
+    private void recordFailedAttempt(String rateLimitKey) {
+        Long attempts = stringRedisTemplate.opsForValue().increment(rateLimitKey);
+        if (attempts != null && attempts == 1L) {
+            // Lần đầu tiên → set TTL 15 phút
+            stringRedisTemplate.expire(rateLimitKey, Duration.ofMinutes(LOGIN_WINDOW_MINUTES));
+        }
+        log.warn("[RATE-LIMIT] Failed login attempt {}/{} for email={}" ,
+                attempts, LOGIN_MAX_ATTEMPTS, rateLimitKey.replace("login:attempts:", ""));
     }
 
     /**
@@ -266,8 +319,25 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Account> getAllAccounts() {
-        return accountRepository.findAll();
+    public org.springframework.data.domain.Page<Account> getAllAccounts(org.springframework.data.domain.Pageable pageable, String roleName) {
+        if (roleName != null && !roleName.isBlank()) {
+            return accountRepository.findByRoleName(roleName, pageable);
+        }
+        return accountRepository.findAll(pageable);
+    }
+
+    @Override
+    @Transactional
+    public Account toggleAccountStatus(Integer customerId) {
+        Account account = accountRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Account not found with id: " + customerId));
+        account.setIsActive(account.getIsActive() == null || !account.getIsActive());
+        
+        Account saved = accountRepository.save(account);
+        if (!saved.getIsActive()) {
+            tokenService.revokeUserRefreshToken(saved.getEmail());
+        }
+        return saved;
     }
 
     @Override
