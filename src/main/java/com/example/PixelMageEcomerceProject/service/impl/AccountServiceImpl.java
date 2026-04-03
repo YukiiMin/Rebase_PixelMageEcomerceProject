@@ -90,7 +90,7 @@ public class AccountServiceImpl implements AccountService {
         emailService.sendVerificationEmail(saved.getEmail(), saved.getName(), verifyToken);
 
         // Broadcast real-time đến admin dashboard
-        wsNotificationService.pushToTopic("admin/dashboard",
+        wsNotificationService.pushToTopic("admin.notifications",
                 NotificationEvent.newUserRegistered(
                         saved.getCustomerId(), saved.getName(), saved.getEmail()));
 

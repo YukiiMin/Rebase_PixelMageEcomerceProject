@@ -72,7 +72,7 @@ public class NotificationEvent {
 
     /**
      * Broadcast khi User mới đăng ký thành công.
-     * Topic: /topic/admin/dashboard
+     * Topic: /topic/admin.notifications
      */
     public static NotificationEvent newUserRegistered(Integer userId, String name, String email) {
         return NotificationEvent.builder()
@@ -88,7 +88,7 @@ public class NotificationEvent {
 
     /**
      * Broadcast khi User bắt đầu một phiên Tarot.
-     * Topic: /topic/admin/dashboard
+     * Topic: /topic/admin.notifications
      * mode: "EXPLORE" | "YOUR_DECK"
      */
     public static NotificationEvent tarotSessionStarted(Integer userId, Integer sessionId, String mode, String spreadName) {
@@ -105,7 +105,7 @@ public class NotificationEvent {
 
     /**
      * Broadcast khi phiên Tarot hoàn thành (AI trả lời xong).
-     * Topic: /topic/admin/dashboard
+     * Topic: /topic/admin.notifications
      */
     public static NotificationEvent tarotSessionCompleted(Integer userId, Integer sessionId, String mode) {
         return NotificationEvent.builder()
@@ -114,6 +114,21 @@ public class NotificationEvent {
                 .payload(Map.of(
                         "sessionId", sessionId,
                         "mode",      mode != null ? mode : "EXPLORE"
+                ))
+                .build();
+    }
+
+    /**
+     * Broadcast khi đơn hàng được thanh toán thành công.
+     * Topic: /topic/admin.notifications
+     */
+    public static NotificationEvent orderPaid(Integer orderId, java.math.BigDecimal amount) {
+        return NotificationEvent.builder()
+                .type("ORDER_PAID")
+                .payload(Map.of(
+                        "orderId", orderId,
+                        "amount",  amount != null ? amount : java.math.BigDecimal.ZERO,
+                        "status",  "COMPLETED"
                 ))
                 .build();
     }

@@ -16,6 +16,8 @@ public class DashboardResponse {
     private Long totalUsers;
     private Long totalOrders;
     private Long totalCardTemplates;
+    private Long totalCardContents;
+    private Long totalPacks;
     private BigDecimal totalRevenue;
 
     private List<DailyRevenue> revenueByDay;

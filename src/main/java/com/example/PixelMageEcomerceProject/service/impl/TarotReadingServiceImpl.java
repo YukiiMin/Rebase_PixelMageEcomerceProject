@@ -155,8 +155,8 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         response.put("status", savedSession.getStatus());
         response.put("spreadName", spread.getName());
 
-        // Broadcast đến admin dashboard — non-fatal
-        wsNotificationService.pushToTopic("admin/dashboard",
+        // Broadcast đến admin.notifications — non-fatal
+        wsNotificationService.pushToTopic("admin.notifications",
                 NotificationEvent.tarotSessionStarted(
                         accountId,
                         savedSession.getSessionId(),
@@ -315,8 +315,8 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         response.put("legalDisclaimer",
                 "Disclaimer: This Tarot reading is for entertainment purposes only and should not replace professional medical, legal, or financial advice.");
 
-        // Broadcast hoàn thành phiên Tarot đến admin dashboard — non-fatal
-        wsNotificationService.pushToTopic("admin/dashboard",
+        // Broadcast hoàn thành phiên Tarot đến admin.notifications — non-fatal
+        wsNotificationService.pushToTopic("admin.notifications",
                 NotificationEvent.tarotSessionCompleted(
                         session.getAccount().getCustomerId(),
                         sessionId,

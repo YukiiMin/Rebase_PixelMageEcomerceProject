@@ -327,9 +327,9 @@ public class OrderServiceImpl implements OrderService {
                 wsNotificationService.pushToUser(userId,
                         NotificationEvent.paymentConfirmed(userId, order.getOrderId(), event.getTransactionId()));
             }
-            // Broadcast đến admin dashboard (/topic/admin/dashboard)
-            wsNotificationService.pushToTopic("admin/dashboard",
-                    NotificationEvent.orderStatusChanged(userId, order.getOrderId(), "COMPLETED"));
+            // Broadcast đến admin notifications (/topic/admin.notifications)
+            wsNotificationService.pushToTopic("admin.notifications",
+                    NotificationEvent.orderPaid(order.getOrderId(), order.getTotalAmount()));
         }
     }
 }
