@@ -32,6 +32,7 @@ public class CardTemplateResponse {
     public static class Summary {
         private Integer cardTemplateId;
         private String name;
+        private String description;
         private String arcanaType;
         private String suit;
         private Integer cardNumber;
