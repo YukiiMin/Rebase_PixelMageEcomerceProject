@@ -86,6 +86,7 @@ public class SecurityConfig {
                                                                 "/api/products/**",
                                                                 "/api/card-frameworks",
                                                                 "/api/card-templates",
+                                                                "/api/card-templates/by-framework/**",
                                                                 "/api/card-templates/**",
                                                                 "/api/card-contents/**")
                                                 .permitAll()
@@ -94,7 +95,8 @@ public class SecurityConfig {
                                 .oauth2Login(oauth2 -> oauth2
                                                 .authorizationEndpoint(auth -> auth
                                                                 .baseUri("/oauth2/authorization")
-                                                                .authorizationRequestRepository(cookieAuthorizationRequestRepository))
+                                                                .authorizationRequestRepository(
+                                                                                cookieAuthorizationRequestRepository))
                                                 .redirectionEndpoint(redirection -> redirection
                                                                 .baseUri("/login/oauth2/code/*"))
                                                 .successHandler(oAuth2AuthenticationSuccessHandler)

@@ -3,6 +3,11 @@ package com.example.PixelMageEcomerceProject.service.impl;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,12 +19,8 @@ import com.example.PixelMageEcomerceProject.enums.CardTemplateRarity;
 import com.example.PixelMageEcomerceProject.repository.CardFrameworkRepository;
 import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.CardTemplateService;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 @Service
 @RequiredArgsConstructor
@@ -31,8 +32,8 @@ public class CardTemplateServiceImpl implements CardTemplateService {
 
     @Override
     @Caching(evict = {
-        @CacheEvict(value = "card-templates", allEntries = true),
-        @CacheEvict(value = "card-template-by-id", allEntries = true)
+            @CacheEvict(value = "card-templates", allEntries = true),
+            @CacheEvict(value = "card-template-by-id", allEntries = true)
     })
     public CardTemplate createCardTemplate(CardTemplateRequestDTO cardTemplateRequestDTO) {
         CardTemplate cardTemplate = new CardTemplate();
@@ -47,7 +48,8 @@ public class CardTemplateServiceImpl implements CardTemplateService {
 
         if (cardTemplateRequestDTO.getFrameworkId() != null) {
             CardFramework framework = cardFrameworkRepository.findById(cardTemplateRequestDTO.getFrameworkId())
-                    .orElseThrow(() -> new RuntimeException("CardFramework not found with id: " + cardTemplateRequestDTO.getFrameworkId()));
+                    .orElseThrow(() -> new RuntimeException(
+                            "CardFramework not found with id: " + cardTemplateRequestDTO.getFrameworkId()));
             cardTemplate.setCardFramework(framework);
         }
 
@@ -56,8 +58,8 @@ public class CardTemplateServiceImpl implements CardTemplateService {
 
     @Override
     @Caching(evict = {
-        @CacheEvict(value = "card-templates", allEntries = true),
-        @CacheEvict(value = "card-template-by-id", key = "#id")
+            @CacheEvict(value = "card-templates", allEntries = true),
+            @CacheEvict(value = "card-template-by-id", key = "#id")
     })
     public CardTemplate updateCardTemplate(Integer id, CardTemplateRequestDTO cardTemplateRequestDTO) {
         Optional<CardTemplate> existingTemplate = cardTemplateRepository.findById(id);
@@ -74,7 +76,8 @@ public class CardTemplateServiceImpl implements CardTemplateService {
 
             if (cardTemplateRequestDTO.getFrameworkId() != null) {
                 CardFramework framework = cardFrameworkRepository.findById(cardTemplateRequestDTO.getFrameworkId())
-                        .orElseThrow(() -> new RuntimeException("CardFramework not found with id: " + cardTemplateRequestDTO.getFrameworkId()));
+                        .orElseThrow(() -> new RuntimeException(
+                                "CardFramework not found with id: " + cardTemplateRequestDTO.getFrameworkId()));
                 updatedTemplate.setCardFramework(framework);
             }
 
@@ -85,8 +88,8 @@ public class CardTemplateServiceImpl implements CardTemplateService {
 
     @Override
     @Caching(evict = {
-        @CacheEvict(value = "card-templates", allEntries = true),
-        @CacheEvict(value = "card-template-by-id", key = "#id")
+            @CacheEvict(value = "card-templates", allEntries = true),
+            @CacheEvict(value = "card-template-by-id", key = "#id")
     })
     public void deleteCardTemplate(Integer id) {
         CardTemplate template = cardTemplateRepository.findById(id)
@@ -107,7 +110,9 @@ public class CardTemplateServiceImpl implements CardTemplateService {
         return cardTemplateRepository.findAll();
     }
 
-    /** Pageable variant — NOT cached (page/sort params make cache keys ambiguous) */
+    /**
+     * Pageable variant — NOT cached (page/sort params make cache keys ambiguous)
+     */
     @Override
     public Page<CardTemplate> getAllCardTemplates(Pageable pageable) {
         return cardTemplateRepository.findAll(pageable);
@@ -121,6 +126,11 @@ public class CardTemplateServiceImpl implements CardTemplateService {
     @Override
     public Page<CardTemplate> getAllByArcana(ArcanaType arcanaType, Pageable pageable) {
         return cardTemplateRepository.findByArcanaType(arcanaType, pageable);
+    }
+
+    @Override
+    public Page<CardTemplate> getAllByFramework(String frameworkId, Pageable pageable) {
+        return cardTemplateRepository.findByCardFramework_FrameworkId(frameworkId, pageable);
     }
 
     @Override

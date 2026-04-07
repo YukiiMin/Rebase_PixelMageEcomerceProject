@@ -1,16 +1,17 @@
 package com.example.PixelMageEcomerceProject.repository;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
 import com.example.PixelMageEcomerceProject.entity.CardTemplate;
 import com.example.PixelMageEcomerceProject.enums.ArcanaType;
 import com.example.PixelMageEcomerceProject.enums.CardTemplateRarity;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.stereotype.Repository;
-
-import java.util.Optional;
-import java.util.List;
 
 @Repository
 public interface CardTemplateRepository extends JpaRepository<CardTemplate, Integer> {
@@ -32,4 +33,7 @@ public interface CardTemplateRepository extends JpaRepository<CardTemplate, Inte
 
     @EntityGraph(value = "CardTemplate.withDetails", type = EntityGraph.EntityGraphType.LOAD)
     Page<CardTemplate> findByArcanaType(ArcanaType arcanaType, Pageable pageable);
+
+    @EntityGraph(value = "CardTemplate.withDetails", type = EntityGraph.EntityGraphType.LOAD)
+    Page<CardTemplate> findByCardFramework_FrameworkId(String frameworkId, Pageable pageable);
 }
