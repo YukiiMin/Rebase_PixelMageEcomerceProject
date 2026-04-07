@@ -9,7 +9,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-    
+
     @org.springframework.beans.factory.annotation.Value("${app.frontend.url}")
     private String frontendUrl;
 
@@ -30,7 +30,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 // Allow explicit origins for production and development
-                .setAllowedOriginPatterns(frontendUrl, devFrontendUrl, "http://localhost:3000")
+                .setAllowedOriginPatterns(
+                        frontendUrl,
+                        devFrontendUrl,
+                        "http://localhost:3000",
+                        "https://*.railway.app",
+                        "https://*.up.railway.app",
+                        "*")
                 // SockJS fallback for browsers that don't support native WebSocket
                 .withSockJS();
     }
