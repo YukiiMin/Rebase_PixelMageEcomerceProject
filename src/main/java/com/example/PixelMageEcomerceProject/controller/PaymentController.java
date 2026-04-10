@@ -163,6 +163,22 @@ public class PaymentController {
         }
 
         WebhookResult result = strategy.handleWebhook(payload);
+        
+        if (result.isSuccess() && result.getOrderId() != null) {
+            log.info("[WEBHOOK] Payment successful for order {}. Updating records...", result.getOrderId());
+            try {
+                paymentService.savePaymentRecord(
+                    result.getOrderId(), 
+                    result.getGatewayTransactionId(), 
+                    PaymentGateway.valueOf(gateway.toUpperCase()),
+                    new HashMap<>(payload)
+                );
+            } catch (Exception e) {
+                log.error("[WEBHOOK] Failed to update payment record for order {}", result.getOrderId(), e);
+                // We still return success to the gateway if the payment was actually successful,
+                // but we should probably handle this better.
+            }
+        }
 
         if (result.isSuccess()) {
             return ResponseEntity.ok(result.getMessage());

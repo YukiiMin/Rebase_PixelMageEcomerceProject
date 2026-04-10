@@ -24,9 +24,6 @@ public abstract class OrderMapper {
     @Value("${sepay.bank-code:MB}")
     private String bankCode;
 
-    @Value("${sepay.va-prefix:VQRQAHWQK1766}")
-    private String vaPrefix;
-
     @Mapping(target = "customer", source = "account")
     @Mapping(target = "appliedVoucher", ignore = true)
     @Mapping(target = "discountAmount", ignore = true)
@@ -42,13 +39,14 @@ public abstract class OrderMapper {
         }
 
         if ("SEPAY".equalsIgnoreCase(order.getPaymentMethod()) && PaymentStatus.PENDING.equals(order.getPaymentStatus())) {
-            // VA format: vaPrefix + orderId => SEPay auto-maps transaction to this order
-            String virtualAccount = vaPrefix + order.getOrderId();
+            // Sử dụng tài khoản chính và addInfo động
+            String addInfo = "PIXELMAGE_ORD_" + order.getOrderId();
             String vietQrUrl = String.format(
-                "https://img.vietqr.io/image/%s-%s-compact.png?amount=%s",
+                "https://img.vietqr.io/image/%s-%s-compact.png?amount=%s&addInfo=%s",
                 bankCode,
-                virtualAccount,
-                order.getTotalAmount() != null ? order.getTotalAmount().toBigInteger() : 0
+                bankAccount,
+                order.getTotalAmount() != null ? order.getTotalAmount().toBigInteger() : 0,
+                addInfo
             );
             response.setPaymentQrUrl(vietQrUrl);
         }

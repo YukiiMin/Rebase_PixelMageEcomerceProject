@@ -29,20 +29,18 @@ public class SEPayGatewayimpl implements PaymentGatewayStrategy {
     @Value("${sepay.bank-code:MB}")
     private String bankCode;
 
-    @Value("${sepay.va-prefix:VQRQAHWQK1766}")
-    private String vaPrefix;
-
     @Override
     public InitPaymentResult initPayment(PaymentStrategyRequest request) {
         log.info("[SEPay] initPayment for order {}", request.getOrderId());
 
-        // VA format: vaPrefix + orderId => SEPay auto-maps to correct order
-        String virtualAccount = vaPrefix + request.getOrderId();
+        // Sử dụng tài khoản chính và addInfo động (PIXELMAGE_ORD_ID)
+        String addInfo = "PIXELMAGE_ORD_" + request.getOrderId();
         String vietQrUrl = String.format(
-            "https://img.vietqr.io/image/%s-%s-compact.png?amount=%s",
+            "https://img.vietqr.io/image/%s-%s-compact.png?amount=%s&addInfo=%s",
             bankCode,
-            virtualAccount,
-            request.getAmount().toBigInteger()
+            bankAccount,
+            request.getAmount().toBigInteger(),
+            addInfo
         );
 
         return InitPaymentResult.builder()
@@ -59,15 +57,37 @@ public class SEPayGatewayimpl implements PaymentGatewayStrategy {
 
     @Override
     public WebhookResult handleWebhook(Map<String, String> payload) {
-        log.info("[SEPay] handleWebhook called with payload: {}", payload);
+        String content = payload.getOrDefault("content", "");
+        String amountStr = payload.getOrDefault("transferAmount", "0");
+        String sepayId = payload.getOrDefault("id", "unknown");
 
-        String sepayReferenceId = payload.getOrDefault("reference_number", payload.get("id"));
-        if (sepayReferenceId != null) {
-            String idempotencyKey = "sepay:webhook:" + sepayReferenceId;
+        log.info("[SEPay] Processing webhook: content={}, amount={}, id={}", content, amountStr, sepayId);
+
+        // ID đơn hàng từ content (Regex: PIXELMAGE_ORD_(\d+))
+        Integer orderId = null;
+        try {
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("PIXELMAGE_ORD_(\\d+)");
+            java.util.regex.Matcher matcher = pattern.matcher(content);
+            if (matcher.find()) {
+                orderId = Integer.parseInt(matcher.group(1));
+            } else {
+                // Thử regex dự phòng nếu KH lỡ tay xóa tiền tố
+                pattern = java.util.regex.Pattern.compile("ORD_(\\d+)");
+                matcher = pattern.matcher(content);
+                if (matcher.find()) {
+                    orderId = Integer.parseInt(matcher.group(1));
+                }
+            }
+        } catch (Exception e) {
+            log.error("[SEPay] Failed to parse orderId from content: {}", content);
+        }
+
+        if (sepayId != null) {
+            String idempotencyKey = "sepay:webhook:" + sepayId;
             Boolean isNew = redisTemplate.opsForValue().setIfAbsent(idempotencyKey, "processed", java.time.Duration.ofHours(24));
 
             if (Boolean.FALSE.equals(isNew)) {
-                log.info("[SEPay] Duplicate webhook detected for SEPay Reference ID: {} — skipping", sepayReferenceId);
+                log.info("[SEPay] Duplicate webhook detected for SEPay ID: {} — skipping", sepayId);
                 return WebhookResult.builder()
                         .success(true)
                         .status(PaymentStatus.SUCCEEDED)
@@ -80,6 +100,9 @@ public class SEPayGatewayimpl implements PaymentGatewayStrategy {
                 .success(true)
                 .status(PaymentStatus.SUCCEEDED)
                 .message("Processed via SEPay")
+                .orderId(orderId)
+                .amount(new java.math.BigDecimal(amountStr))
+                .gatewayTransactionId(sepayId)
                 .build();
     }
 
