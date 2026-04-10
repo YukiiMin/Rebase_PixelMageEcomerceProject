@@ -238,6 +238,9 @@ public class AccountServiceImpl implements AccountService {
         // Chỉ update field nào có giá trị (khác null), ignore các field immutable
         accountMapper.updateEntityFromDto(dto, existing);
 
+        // Manual set updatedAt để đảm bảo timestamp được cập nhật
+        existing.setUpdatedAt(java.time.LocalDateTime.now());
+
         return accountRepository.save(existing);
     }
 

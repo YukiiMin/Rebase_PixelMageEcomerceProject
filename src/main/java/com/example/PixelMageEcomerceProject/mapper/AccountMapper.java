@@ -40,6 +40,10 @@ public interface AccountMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "isActive", ignore = true)
     @Mapping(target = "guestReadingUsedAt", ignore = true)
+    // Explicit mapping for new profile fields
+    @Mapping(target = "gender", source = "gender")
+    @Mapping(target = "dateOfBirth", source = "dateOfBirth")
+    @Mapping(target = "address", source = "address")
     void updateEntityFromDto(UpdateProfileRequestDTO dto, @MappingTarget Account entity);
 
     @Named("isGuestReadingUsedToday")

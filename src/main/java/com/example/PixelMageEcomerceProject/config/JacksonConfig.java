@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @Configuration
 public class JacksonConfig {
@@ -14,6 +15,9 @@ public class JacksonConfig {
         Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
         // Disable failure on empty beans (like Hibernate proxies)
         builder.featuresToDisable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+        // Add JavaTimeModule to properly serialize Java 8 date/time types (LocalDate,
+        // LocalDateTime)
+        builder.modules(new JavaTimeModule());
         return builder;
     }
 }
