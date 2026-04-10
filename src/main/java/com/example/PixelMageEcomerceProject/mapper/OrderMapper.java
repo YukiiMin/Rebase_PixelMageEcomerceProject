@@ -38,7 +38,7 @@ public abstract class OrderMapper {
             response.setDiscountAmount(BigDecimal.ZERO);
         }
 
-        if ("VNPAY".equalsIgnoreCase(order.getPaymentMethod()) && PaymentStatus.PENDING.equals(order.getPaymentStatus())) {
+        if ("SEPAY".equalsIgnoreCase(order.getPaymentMethod()) && PaymentStatus.PENDING.equals(order.getPaymentStatus())) {
             String description = "PIXELMAGE_ORD_" + order.getOrderId();
             String vietQrUrl = String.format(
                 "https://img.vietqr.io/image/%s-%s-compact.png?amount=%s&addInfo=%s",
