@@ -63,21 +63,29 @@ public class SEPayGatewayimpl implements PaymentGatewayStrategy {
 
         log.info("[SEPay] Processing webhook: content={}, amount={}, id={}", content, amountStr, sepayId);
 
-        // ID đơn hàng từ content (Regex: PIXELMAGE_ORD_(\d+))
+        // ID đơn hàng từ content
+        // Ngân hàng thường bỏ dấu _ nên: PIXELMAGE_ORD_6 → PIXELMAGEORD6
+        // Regex hỗ trợ cả 2 dạng: PIXELMAGE_ORD_6, PIXELMAGEORD6, ORD_6, ORD6
         Integer orderId = null;
         try {
-            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("PIXELMAGE_ORD_(\\d+)");
-            java.util.regex.Matcher matcher = pattern.matcher(content);
+            String upperContent = content.toUpperCase();
+            java.util.regex.Matcher matcher;
+
+            // Pattern 1: PIXELMAGE_ORD_6 hoặc PIXELMAGEORD6
+            matcher = java.util.regex.Pattern.compile("PIXELMAGE[_]?ORD[_]?(\\d+)").matcher(upperContent);
             if (matcher.find()) {
                 orderId = Integer.parseInt(matcher.group(1));
-            } else {
-                // Thử regex dự phòng nếu KH lỡ tay xóa tiền tố
-                pattern = java.util.regex.Pattern.compile("ORD_(\\d+)");
-                matcher = pattern.matcher(content);
+            }
+
+            // Pattern 2: dự phòng ORD_6 hoặc ORD6
+            if (orderId == null) {
+                matcher = java.util.regex.Pattern.compile("\\bORD[_]?(\\d+)").matcher(upperContent);
                 if (matcher.find()) {
                     orderId = Integer.parseInt(matcher.group(1));
                 }
             }
+
+            log.info("[SEPay] Parsed orderId={} from content: {}", orderId, content);
         } catch (Exception e) {
             log.error("[SEPay] Failed to parse orderId from content: {}", content);
         }

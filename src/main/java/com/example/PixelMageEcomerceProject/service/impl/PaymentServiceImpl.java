@@ -89,24 +89,32 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public Payment savePaymentRecord(Integer orderId, String gatewayTransactionId, PaymentGateway gateway,
             Map<String, Object> paymentData) {
-        log.info("Saving payment record for orderId: {}, gatewayTransactionId: {}, gateway: {}", orderId,
+        log.info("[WEBHOOK] savePaymentRecord: orderId={}, gatewayTxId={}, gateway={}", orderId,
                 gatewayTransactionId, gateway);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> PaymentNotFoundException.forOrderId(orderId));
 
-        Payment payment = new Payment();
-        payment.setOrder(order);
-        payment.setAmount(order.getTotalAmount());
-        payment.setCurrency("VND");
-        payment.setPaymentGateway(gateway);
+        // Tìm payment PENDING hiện có và update thay vì tạo mới (tránh duplicate)
+        Payment payment = paymentRepository.findTopByOrder_OrderIdAndPaymentStatus(orderId, PaymentStatus.PENDING)
+                .orElseGet(() -> {
+                    log.warn("[WEBHOOK] No PENDING payment found for order {}, creating new record.", orderId);
+                    Payment newPayment = new Payment();
+                    newPayment.setOrder(order);
+                    newPayment.setAmount(order.getTotalAmount());
+                    newPayment.setCurrency("VND");
+                    newPayment.setPaymentGateway(gateway);
+                    return newPayment;
+                });
+
         payment.setGatewayTransactionId(gatewayTransactionId);
         payment.setPaymentStatus(PaymentStatus.SUCCEEDED);
         payment.setProcessedAt(LocalDateTime.now());
 
         Payment savedPayment = paymentRepository.save(payment);
+        log.info("[WEBHOOK] Payment record saved/updated: paymentId={}, status=SUCCEEDED", savedPayment.getPaymentId());
 
-        // Publish event to trigger Order update and pack assignment
+        // Bắn event để OrderService cập nhật trạng thái đơn hàng và gán Pack
         eventPublisher.publishEvent(new PaymentSuccessEvent(
                 this,
                 orderId,
