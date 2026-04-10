@@ -16,11 +16,13 @@ import com.example.PixelMageEcomerceProject.entity.Product;
 public interface OrderItemMapper {
 
     @Mapping(target = "pack", source = "pack")
+    @Mapping(target = "product", source = "product")
     OrderResponse.Item toResponse(OrderItem orderItem);
 
     @Mapping(target = "orderItemId", ignore = true)
-    @Mapping(target = "order", ignore = true) // Set in service
-    @Mapping(target = "pack", ignore = true) // Lookup and set in service
+    @Mapping(target = "order", ignore = true)     // Set in service
+    @Mapping(target = "product", ignore = true)   // Looked up and set in service
+    @Mapping(target = "pack", ignore = true)      // Assigned AFTER payment, not at order creation
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     OrderItem toEntity(OrderItemRequestDTO dto);

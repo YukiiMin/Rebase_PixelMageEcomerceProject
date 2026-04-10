@@ -9,10 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.PixelMageEcomerceProject.dto.request.OrderItemRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.OrderItem;
-import com.example.PixelMageEcomerceProject.entity.Pack;
+import com.example.PixelMageEcomerceProject.entity.Product;
 import com.example.PixelMageEcomerceProject.repository.OrderItemRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
-import com.example.PixelMageEcomerceProject.repository.PackRepository;
+import com.example.PixelMageEcomerceProject.repository.ProductRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.OrderItemService;
 
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ public class OrderItemServiceImpl implements OrderItemService {
 
     private final OrderItemRepository orderItemRepository;
     private final OrderRepository orderRepository;
-    private final PackRepository packRepository;
+    private final ProductRepository productRepository;
 
     @Override
     public OrderItem createOrderItem(OrderItemRequestDTO orderItemRequestDTO) {
@@ -32,12 +32,12 @@ public class OrderItemServiceImpl implements OrderItemService {
                 .orElseThrow(
                         () -> new RuntimeException("Order not found with id: " + orderItemRequestDTO.getOrderId()));
 
-        Pack pack = packRepository.findById(orderItemRequestDTO.getPackId())
-                .orElseThrow(() -> new RuntimeException("Pack not found with id: " + orderItemRequestDTO.getPackId()));
+        Product product = productRepository.findById(orderItemRequestDTO.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + orderItemRequestDTO.getProductId()));
 
         OrderItem orderItem = new OrderItem();
         orderItem.setOrder(order);
-        orderItem.setPack(pack);
+        orderItem.setProduct(product); // Product is set at creation, pack is set later upon payment
         orderItem.setQuantity(orderItemRequestDTO.getQuantity());
         orderItem.setUnitPrice(orderItemRequestDTO.getUnitPrice());
         orderItem.setSubtotal(orderItemRequestDTO.getSubtotal());
@@ -59,11 +59,11 @@ public class OrderItemServiceImpl implements OrderItemService {
                 updatedOrderItem.setOrder(order);
             }
 
-            if (orderItemRequestDTO.getPackId() != null) {
-                Pack pack = packRepository.findById(orderItemRequestDTO.getPackId())
+            if (orderItemRequestDTO.getProductId() != null) {
+                Product product = productRepository.findById(orderItemRequestDTO.getProductId())
                         .orElseThrow(() -> new RuntimeException(
-                                "Pack not found with id: " + orderItemRequestDTO.getPackId()));
-                updatedOrderItem.setPack(pack);
+                                "Product not found with id: " + orderItemRequestDTO.getProductId()));
+                updatedOrderItem.setProduct(product);
             }
 
             updatedOrderItem.setQuantity(orderItemRequestDTO.getQuantity());

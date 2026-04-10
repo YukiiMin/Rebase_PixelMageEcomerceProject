@@ -41,6 +41,9 @@ public class OrderResponse {
         private BigDecimal unitPrice;
         private BigDecimal subtotal;
         private String customText;
+        /** Product that was ordered — always present */
+        private ProductSummary product;
+        /** Physical Pack assigned after payment — null until payment succeeds */
         private PackSummary pack;
     }
 

@@ -38,8 +38,20 @@ public class OrderItem {
     @JsonBackReference("order-orderItems")
     private Order order;
 
+    /**
+     * What the customer ordered (the Product/catalog item).
+     * This is set at order creation time.
+     */
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "pack_id", nullable = false, referencedColumnName = "pack_id")
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
+
+    /**
+     * The specific physical Pack assigned to fulfill this order item.
+     * NULL until payment is confirmed — Pack is assigned in handlePaymentSuccess().
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pack_id", nullable = true)
     private Pack pack;
 
     @Column(name = "quantity", nullable = false)

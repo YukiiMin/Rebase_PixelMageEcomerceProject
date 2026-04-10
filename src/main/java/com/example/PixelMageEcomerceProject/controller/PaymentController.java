@@ -54,7 +54,7 @@ public class PaymentController {
     private final PaymentMapper paymentMapper;
 
     @PostMapping("/initiate")
-    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @Operation(summary = "Initiate payment", description = "Initialize payment using the active gateway (SEPay)")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Payment initialized successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
@@ -85,7 +85,7 @@ public class PaymentController {
     }
 
     @PostMapping("/confirm-payment")
-    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @Operation(summary = "Confirm payment", description = "Confirm payment and save record (Legacy support/Generic)")
     public ResponseEntity<ResponseBase<PaymentResponseDTO>> confirmPayment(
             @RequestBody Map<String, Object> paymentData) {
@@ -104,7 +104,7 @@ public class PaymentController {
     }
 
     @GetMapping("/history/{customerId}")
-    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @Operation(summary = "Get payment history", description = "Retrieve customer's payment history")
     public ResponseEntity<ResponseBase<List<PaymentResponseDTO>>> getPaymentHistory(
             @Parameter(description = "Customer ID") @PathVariable Integer customerId) {
@@ -118,7 +118,7 @@ public class PaymentController {
     }
 
     @GetMapping("/order/{orderId}")
-    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @Operation(summary = "Get payment by order", description = "Retrieve payment information for a specific order")
     public ResponseEntity<ResponseBase<List<PaymentResponseDTO>>> getPaymentByOrderId(
             @Parameter(description = "Order ID") @PathVariable Integer orderId) {

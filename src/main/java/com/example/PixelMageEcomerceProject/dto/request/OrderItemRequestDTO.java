@@ -11,7 +11,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class OrderItemRequestDTO {
     private Integer orderId;
-    private Integer packId;
+    /** The product the customer wants to buy. Pack will be assigned after payment. */
+    private Integer productId;
     private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal subtotal;
