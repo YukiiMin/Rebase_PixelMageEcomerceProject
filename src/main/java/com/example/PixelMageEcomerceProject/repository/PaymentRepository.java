@@ -44,6 +44,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     List<Payment> findByPaymentStatus(PaymentStatus paymentStatus);
 
     /**
+     * Find the most recent PENDING payment for an order (used by webhook to update in-place).
+     */
+    Optional<Payment> findTopByOrder_OrderIdAndPaymentStatus(Integer orderId, PaymentStatus paymentStatus);
+
+
+    /**
      * Find saved payment methods by customer ID.
      */
     @Query("SELECT p FROM Payment p WHERE p.order.account.customerId = :customerId AND p.isSavedPaymentMethod = true")
