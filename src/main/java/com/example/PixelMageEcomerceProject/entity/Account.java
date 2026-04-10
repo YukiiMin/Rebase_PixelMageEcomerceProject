@@ -1,5 +1,6 @@
 package com.example.PixelMageEcomerceProject.entity;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
@@ -63,6 +64,15 @@ public class Account implements UserDetails {
 
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
+
+    @Column(name = "gender", length = 10)
+    private String gender;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    @Column(name = "address", length = 255)
+    private String address;
 
     // Email verification
     @Column(name = "email_verified", nullable = false)

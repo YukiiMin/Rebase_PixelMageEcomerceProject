@@ -1,10 +1,12 @@
 package com.example.PixelMageEcomerceProject.dto.response;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -18,6 +20,9 @@ public class AccountResponse {
     private String phoneNumber;
     private String role;
     private String authProvider;
+    private String gender;
+    private LocalDate dateOfBirth;
+    private String address;
     private Boolean emailVerified;
     private Boolean isActive;
     private LocalDateTime createdAt;
@@ -33,6 +38,9 @@ public class AccountResponse {
         private String name;
         private String avatarUrl;
         private String phoneNumber;
+        private String gender;
+        private LocalDate dateOfBirth;
+        private String address;
         private String role;
         private Boolean emailVerified;
         private Boolean isActive;
