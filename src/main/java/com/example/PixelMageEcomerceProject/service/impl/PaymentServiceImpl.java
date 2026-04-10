@@ -24,6 +24,8 @@ import com.example.PixelMageEcomerceProject.service.model.InitPaymentResult;
 import com.example.PixelMageEcomerceProject.service.model.PaymentStrategyRequest;
 import com.example.PixelMageEcomerceProject.dto.response.PaymentResponseDTO;
 import com.example.PixelMageEcomerceProject.mapper.PaymentMapper;
+import com.example.PixelMageEcomerceProject.event.PaymentSuccessEvent;
+import org.springframework.context.ApplicationEventPublisher;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Qualifier("sepay")
     private final PaymentGatewayStrategy activeGateway;
     private final PaymentMapper paymentMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     // // PaymentServiceImpl.java
     // public PaymentServiceImpl(PaymentRepository paymentRepository,
@@ -101,7 +104,18 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPaymentStatus(PaymentStatus.SUCCEEDED);
         payment.setProcessedAt(LocalDateTime.now());
 
-        return paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+
+        // Publish event to trigger Order update and pack assignment
+        eventPublisher.publishEvent(new PaymentSuccessEvent(
+                this,
+                orderId,
+                gatewayTransactionId,
+                order.getTotalAmount(),
+                gateway
+        ));
+
+        return savedPayment;
     }
 
     @Override
