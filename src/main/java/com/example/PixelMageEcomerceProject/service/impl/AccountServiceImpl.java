@@ -1,28 +1,28 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
-
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Value;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 
-import com.example.PixelMageEcomerceProject.dto.request.RegisterRequestDTO;
-import com.example.PixelMageEcomerceProject.dto.request.UpdateProfileRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
 import com.example.PixelMageEcomerceProject.dto.request.ChangePasswordRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.ForgotPasswordRequestDTO;
-import com.example.PixelMageEcomerceProject.dto.request.ResetPasswordRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.LoginRequestDTO;
-import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
+import com.example.PixelMageEcomerceProject.dto.request.RegisterRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.request.ResetPasswordRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.request.UpdateProfileRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Role;
 import com.example.PixelMageEcomerceProject.exceptions.RateLimitExceededException;
+import com.example.PixelMageEcomerceProject.mapper.AccountMapper;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.RoleRepository;
 import com.example.PixelMageEcomerceProject.security.service.AuthenticationService;
@@ -30,12 +30,11 @@ import com.example.PixelMageEcomerceProject.security.service.TokenService;
 import com.example.PixelMageEcomerceProject.service.EmailService;
 import com.example.PixelMageEcomerceProject.service.interfaces.AccountService;
 import com.example.PixelMageEcomerceProject.service.interfaces.WebSocketNotificationService;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-
-import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
@@ -50,10 +49,11 @@ public class AccountServiceImpl implements AccountService {
     private final EmailService emailService;
     private final WebSocketNotificationService wsNotificationService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final AccountMapper accountMapper;
 
     /** Rate limit: tối đa 5 lần login thất bại trong 15 phút */
-    private static final int    LOGIN_MAX_ATTEMPTS  = 5;
-    private static final long   LOGIN_WINDOW_MINUTES = 15;
+    private static final int LOGIN_MAX_ATTEMPTS = 5;
+    private static final long LOGIN_WINDOW_MINUTES = 15;
 
     @Value("${google.client-id}")
     private String googleClientId;
@@ -149,7 +149,7 @@ public class AccountServiceImpl implements AccountService {
             log.warn("[RATE-LIMIT] Login blocked for email={} after {} failed attempts", dto.getEmail(), currentCount);
             throw new RateLimitExceededException(
                     "Tài khoản tạm thời bị khóa do quá nhiều lần đăng nhập thất bại. "
-                    + "Vui lòng thử lại sau " + LOGIN_WINDOW_MINUTES + " phút.");
+                            + "Vui lòng thử lại sau " + LOGIN_WINDOW_MINUTES + " phút.");
         }
         // ────────────────────────────────────────────────────
 
@@ -193,7 +193,7 @@ public class AccountServiceImpl implements AccountService {
             // Lần đầu tiên → set TTL 15 phút
             stringRedisTemplate.expire(rateLimitKey, Duration.ofMinutes(LOGIN_WINDOW_MINUTES));
         }
-        log.warn("[RATE-LIMIT] Failed login attempt {}/{} for email={}" ,
+        log.warn("[RATE-LIMIT] Failed login attempt {}/{} for email={}",
                 attempts, LOGIN_MAX_ATTEMPTS, rateLimitKey.replace("login:attempts:", ""));
     }
 
@@ -233,15 +233,10 @@ public class AccountServiceImpl implements AccountService {
         Account existing = accountRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Account not found with id: " + customerId));
 
-        if (dto.getName() != null && !dto.getName().isBlank()) {
-            existing.setName(dto.getName());
-        }
-        if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().isBlank()) {
-            existing.setPhoneNumber(dto.getPhoneNumber());
-        }
-        if (dto.getAvatarUrl() != null && !dto.getAvatarUrl().isBlank()) {
-            existing.setAvatarUrl(dto.getAvatarUrl());
-        }
+        // ✅ MapStruct 1.5+ best practice: Partial update với @MappingTarget
+        // Tự động update: name, phoneNumber, avatarUrl, gender, dateOfBirth, address
+        // Chỉ update field nào có giá trị (khác null), ignore các field immutable
+        accountMapper.updateEntityFromDto(dto, existing);
 
         return accountRepository.save(existing);
     }
@@ -319,7 +314,8 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<Account> getAllAccounts(org.springframework.data.domain.Pageable pageable, String roleName) {
+    public org.springframework.data.domain.Page<Account> getAllAccounts(
+            org.springframework.data.domain.Pageable pageable, String roleName) {
         if (roleName != null && !roleName.isBlank()) {
             return accountRepository.findByRoleName(roleName, pageable);
         }
@@ -332,7 +328,7 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Account not found with id: " + customerId));
         account.setIsActive(account.getIsActive() == null || !account.getIsActive());
-        
+
         Account saved = accountRepository.save(account);
         if (!saved.getIsActive()) {
             tokenService.revokeUserRefreshToken(saved.getEmail());
@@ -369,12 +365,14 @@ public class AccountServiceImpl implements AccountService {
 
                 if (account != null) {
                     boolean changed = false;
-                    if (account.getAuthProvider() == com.example.PixelMageEcomerceProject.enums.AuthProvider.LOCAL && Boolean.TRUE.equals(account.getIsActive())) {
+                    if (account.getAuthProvider() == com.example.PixelMageEcomerceProject.enums.AuthProvider.LOCAL
+                            && Boolean.TRUE.equals(account.getIsActive())) {
                         account.setAuthProvider(com.example.PixelMageEcomerceProject.enums.AuthProvider.GOOGLE);
                         account.setProviderId(googleId);
                         emailService.sendGoogleLinkedNotification(account.getEmail(), account.getName());
                         changed = true;
-                        // log.info("Linked Google to existing LOCAL account from mobile verifier: {}", email);
+                        // log.info("Linked Google to existing LOCAL account from mobile verifier: {}",
+                        // email);
                     } else if (!googleId.equals(account.getProviderId())) {
                         account.setProviderId(googleId);
                         changed = true;
@@ -389,7 +387,8 @@ public class AccountServiceImpl implements AccountService {
                         account.setAvatarUrl(avatarUrl);
                         changed = true;
                     }
-                    if (changed) account = accountRepository.save(account);
+                    if (changed)
+                        account = accountRepository.save(account);
                 } else {
                     Role userRole = roleRepository.findByRoleName("USER")
                             .orElseThrow(() -> new RuntimeException("USER role not found"));

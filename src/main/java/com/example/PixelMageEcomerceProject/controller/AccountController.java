@@ -1,11 +1,11 @@
 package com.example.PixelMageEcomerceProject.controller;
 
-
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.security.access.prepost.PreAuthorize;
-
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.PixelMageEcomerceProject.dto.request.ChangePasswordRequestDTO;
@@ -25,17 +23,16 @@ import com.example.PixelMageEcomerceProject.dto.request.LoginRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.RegisterRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.ResetPasswordRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.UpdateProfileRequestDTO;
+import com.example.PixelMageEcomerceProject.dto.response.AccountResponse;
+import com.example.PixelMageEcomerceProject.dto.response.AuthResponse;
 import com.example.PixelMageEcomerceProject.dto.response.ResponseBase;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.enums.AuthProvider;
+import com.example.PixelMageEcomerceProject.mapper.AccountMapper;
 import com.example.PixelMageEcomerceProject.security.jwt.JwtTokenProvider;
 import com.example.PixelMageEcomerceProject.security.service.AuthenticationService;
-import com.example.PixelMageEcomerceProject.service.interfaces.AccountService;
 import com.example.PixelMageEcomerceProject.service.impl.CheckoutTokenServiceImpl;
-import com.example.PixelMageEcomerceProject.mapper.AccountMapper;
-import com.example.PixelMageEcomerceProject.dto.response.AccountResponse;
-import com.example.PixelMageEcomerceProject.dto.response.AccountResponse;
-import com.example.PixelMageEcomerceProject.dto.response.AuthResponse;
+import com.example.PixelMageEcomerceProject.service.interfaces.AccountService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -94,10 +91,10 @@ public class AccountController {
                         Map<String, Object> serviceResult = accountService.loginAccount(dto);
                         Account account = (Account) serviceResult.get("account");
                         AuthResponse authResponse = AuthResponse.builder()
-                                .accessToken((String) serviceResult.get("accessToken"))
-                                .refreshToken((String) serviceResult.get("refreshToken"))
-                                .account(accountMapper.toAccountResponse(account))
-                                .build();
+                                        .accessToken((String) serviceResult.get("accessToken"))
+                                        .refreshToken((String) serviceResult.get("refreshToken"))
+                                        .account(accountMapper.toAccountResponse(account))
+                                        .build();
                         return ResponseBase.ok(authResponse, "Đăng nhập thành công");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.UNAUTHORIZED, e.getMessage());
@@ -196,7 +193,8 @@ public class AccountController {
                         @ApiResponse(responseCode = "200", description = "Đăng nhập thành công, trả về accessToken + refreshToken"),
                         @ApiResponse(responseCode = "401", description = "Token không hợp lệ")
         })
-        public ResponseEntity<ResponseBase<AuthResponse>> verifyGoogleTokenForMobile(@RequestBody Map<String, String> payload) {
+        public ResponseEntity<ResponseBase<AuthResponse>> verifyGoogleTokenForMobile(
+                        @RequestBody Map<String, String> payload) {
                 try {
                         String idToken = payload.get("idToken");
                         if (idToken == null || idToken.isBlank()) {
@@ -205,10 +203,10 @@ public class AccountController {
                         Map<String, Object> serviceResult = accountService.verifyGoogleMobileToken(idToken);
                         Account account = (Account) serviceResult.get("account");
                         AuthResponse authResponse = AuthResponse.builder()
-                                .accessToken((String) serviceResult.get("accessToken"))
-                                .refreshToken((String) serviceResult.get("refreshToken"))
-                                .account(accountMapper.toAccountResponse(account))
-                                .build();
+                                        .accessToken((String) serviceResult.get("accessToken"))
+                                        .refreshToken((String) serviceResult.get("refreshToken"))
+                                        .account(accountMapper.toAccountResponse(account))
+                                        .build();
                         return ResponseBase.ok(authResponse, "Xác thực Google token thành công.");
                 } catch (RuntimeException e) {
                         return ResponseBase.error(HttpStatus.UNAUTHORIZED, e.getMessage());
@@ -278,12 +276,13 @@ public class AccountController {
         @Operation(summary = "Lấy danh sách tất cả accounts with pagination")
         @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
         public ResponseEntity<ResponseBase<org.springframework.data.domain.Page<AccountResponse.Summary>>> getAllAccounts(
-                org.springframework.data.domain.Pageable pageable,
-                @RequestParam(required = false) String role) {
-                
-                org.springframework.data.domain.Page<AccountResponse.Summary> page = accountService.getAllAccounts(pageable, role)
-                        .map(accountMapper::toAccountSummaryResponse);
-                        
+                        org.springframework.data.domain.Pageable pageable,
+                        @RequestParam(required = false) String role) {
+
+                org.springframework.data.domain.Page<AccountResponse.Summary> page = accountService
+                                .getAllAccounts(pageable, role)
+                                .map(accountMapper::toAccountSummaryResponse);
+
                 return ResponseBase.ok(page, "Accounts retrieved successfully");
         }
 
@@ -318,7 +317,8 @@ public class AccountController {
         @ApiResponse(responseCode = "404", description = "Không tìm thấy account")
         public ResponseEntity<ResponseBase<AccountResponse>> getAccountById(@PathVariable Integer id) {
                 return accountService.getAccountById(id)
-                                .map(a -> ResponseBase.ok(accountMapper.toAccountResponse(a), "Account retrieved successfully"))
+                                .map(a -> ResponseBase.ok(accountMapper.toAccountResponse(a),
+                                                "Account retrieved successfully"))
                                 .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND,
                                                 "Account not found with id: " + id));
         }
@@ -328,14 +328,17 @@ public class AccountController {
         @ApiResponse(responseCode = "404", description = "Không tìm thấy account")
         public ResponseEntity<ResponseBase<AccountResponse>> getAccountByEmail(@PathVariable String email) {
                 return accountService.getAccountByEmail(email)
-                                .map(a -> ResponseBase.ok(accountMapper.toAccountResponse(a), "Account retrieved successfully"))
+                                .map(a -> ResponseBase.ok(accountMapper.toAccountResponse(a),
+                                                "Account retrieved successfully"))
                                 .orElseGet(() -> ResponseBase.error(HttpStatus.NOT_FOUND, "Account not found"));
         }
 
         @PutMapping("/{id}")
-        @Operation(summary = "Cập nhật account", description = "Cho phép cập nhật: name, phoneNumber, avatarUrl. "
+        @Operation(summary = "Cập nhật profile", description = "Cập nhật: name, phoneNumber, avatarUrl, gender, dateOfBirth, address. "
                         +
-                        "Không thể đổi vai trò, email, hay mật khẩu qua endpoint này.")
+                        "Chỉ update field nào được gửi (partial update). "
+                        +
+                        "Không thể đổi: email, password, role qua endpoint này.")
         @ApiResponses({
                         @ApiResponse(responseCode = "200", description = "Cập nhật thành công"),
                         @ApiResponse(responseCode = "404", description = "Không tìm thấy account")
@@ -396,13 +399,12 @@ public class AccountController {
         // =========================================================
 
         @PostMapping("/auth/checkout-token")
-        @Operation(
-                summary = "Phát hành Checkout Token (Mobile → Web)",
-                description = "Nhận JWT hợp lệ qua Authorization header, trả về checkout token 1 lần dùng có TTL 5 phút. " +
+        @Operation(summary = "Phát hành Checkout Token (Mobile → Web)", description = "Nhận JWT hợp lệ qua Authorization header, trả về checkout token 1 lần dùng có TTL 5 phút. "
+                        +
                         "Token này được nhúng vào URL /checkout/{packId}?ct=... thay vì JWT gốc để đảm bảo an toàn.")
         @ApiResponses({
-                @ApiResponse(responseCode = "200", description = "Trả về checkoutToken"),
-                @ApiResponse(responseCode = "401", description = "JWT không hợp lệ")
+                        @ApiResponse(responseCode = "200", description = "Trả về checkoutToken"),
+                        @ApiResponse(responseCode = "401", description = "JWT không hợp lệ")
         })
         public ResponseEntity<ResponseBase<Map<String, String>>> issueCheckoutToken(
                         @RequestHeader("Authorization") String authHeader) {
@@ -416,19 +418,18 @@ public class AccountController {
                                 return ResponseBase.error(HttpStatus.UNAUTHORIZED, "Token không hợp lệ");
                         }
                         String checkoutToken = checkoutTokenService.issue(email);
-                        return ResponseBase.ok(Map.of("checkoutToken", checkoutToken), "Checkout token đã được phát hành");
+                        return ResponseBase.ok(Map.of("checkoutToken", checkoutToken),
+                                        "Checkout token đã được phát hành");
                 } catch (Exception e) {
                         return ResponseBase.error(HttpStatus.UNAUTHORIZED, "Không thể xác thực JWT: " + e.getMessage());
                 }
         }
 
         @GetMapping("/auth/verify-checkout-token")
-        @Operation(
-                summary = "Xác minh và tiêu thụ Checkout Token (Web App dùng)",
-                description = "Web App gọi endpoint này với ct=<checkoutToken> để lấy thông tin user rồi dùng cho phiên thanh toán. Token bị hủy ngay sau khi dùng (one-use).")
+        @Operation(summary = "Xác minh và tiêu thụ Checkout Token (Web App dùng)", description = "Web App gọi endpoint này với ct=<checkoutToken> để lấy thông tin user rồi dùng cho phiên thanh toán. Token bị hủy ngay sau khi dùng (one-use).")
         @ApiResponses({
-                @ApiResponse(responseCode = "200", description = "Token hợp lệ — trả về email và userId"),
-                @ApiResponse(responseCode = "400", description = "Token không hợp lệ hoặc đã hết hạn")
+                        @ApiResponse(responseCode = "200", description = "Token hợp lệ — trả về email và userId"),
+                        @ApiResponse(responseCode = "400", description = "Token không hợp lệ hoặc đã hết hạn")
         })
         public ResponseEntity<ResponseBase<Map<String, Object>>> verifyCheckoutToken(@RequestParam String ct) {
                 try {
