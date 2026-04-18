@@ -88,7 +88,8 @@ public class SecurityConfig {
                                                                 "/api/card-templates",
                                                                 "/api/card-templates/by-framework/**",
                                                                 "/api/card-templates/**",
-                                                                "/api/card-contents/**")
+                                                                "/api/card-contents/**",
+                                                                "/api/theme-music/active")
                                                 .permitAll()
                                                 // Protected endpoints - JWT authentication required
                                                 .anyRequest().authenticated())

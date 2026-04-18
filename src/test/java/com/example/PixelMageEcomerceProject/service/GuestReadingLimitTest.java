@@ -77,7 +77,7 @@ class GuestReadingLimitTest {
         when(userInventoryService.getLinkedCardCount(1)).thenReturn(0);
         guestAccount.setGuestReadingUsedAt(null);
 
-        assertDoesNotThrow(() -> tarotReadingService.createSession(1, 1, "EXPLORE"));
+        assertDoesNotThrow(() -> tarotReadingService.createSession(1, 1, "EXPLORE", "My question"));
         
         verify(accountRepository, times(1)).save(guestAccount);
         assertNotNull(guestAccount.getGuestReadingUsedAt());
@@ -90,7 +90,7 @@ class GuestReadingLimitTest {
         guestAccount.setGuestReadingUsedAt(LocalDateTime.now());
 
         assertThrows(GuestReadingLimitException.class, () -> 
-            tarotReadingService.createSession(1, 1, "EXPLORE")
+            tarotReadingService.createSession(1, 1, "EXPLORE", "My question")
         );
     }
 
@@ -100,7 +100,7 @@ class GuestReadingLimitTest {
         when(userInventoryService.getLinkedCardCount(1)).thenReturn(0);
         guestAccount.setGuestReadingUsedAt(LocalDateTime.now().minusDays(1));
 
-        assertDoesNotThrow(() -> tarotReadingService.createSession(1, 1, "EXPLORE"));
+        assertDoesNotThrow(() -> tarotReadingService.createSession(1, 1, "EXPLORE", "My question"));
         verify(accountRepository, times(1)).save(guestAccount);
     }
 
@@ -111,8 +111,8 @@ class GuestReadingLimitTest {
         guestAccount.setGuestReadingUsedAt(LocalDateTime.now());
 
         // Should not throw even if guestReadingUsedAt was set today (though it shouldn't be affected)
-        assertDoesNotThrow(() -> tarotReadingService.createSession(1, 1, "EXPLORE"));
-        assertDoesNotThrow(() -> tarotReadingService.createSession(1, 1, "EXPLORE"));
+        assertDoesNotThrow(() -> tarotReadingService.createSession(1, 1, "EXPLORE", "My question"));
+        assertDoesNotThrow(() -> tarotReadingService.createSession(1, 1, "EXPLORE", "My question"));
     }
 
     @Test
