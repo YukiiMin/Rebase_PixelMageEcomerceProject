@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PackRequestDTO {
-    private Integer productId;
+    private Integer packCategoryId;
     private Integer createdByAccountId;
     private List<Integer> cardIds;
 }

@@ -8,7 +8,8 @@ import com.example.PixelMageEcomerceProject.dto.response.PackResponse;
 import com.example.PixelMageEcomerceProject.enums.PackStatus;
 
 public interface PackService {
-    PackResponse createPack(PackRequestDTO requestDTO); // This should run RNG to select cards
+    PackResponse createPack(PackRequestDTO requestDTO); // Obsolete, kept for compilation
+    List<PackResponse> generatePacks(Integer packCategoryId, Integer quantity);
 
     Optional<PackResponse> getPackById(Integer id);
 

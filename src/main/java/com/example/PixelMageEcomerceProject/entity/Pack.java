@@ -32,7 +32,7 @@ import jakarta.persistence.NamedEntityGraph;
 @NamedEntityGraph(
     name = "Pack.withDetails",
     attributeNodes = {
-        @NamedAttributeNode("product"),
+        @NamedAttributeNode("packCategory"),
         @NamedAttributeNode("packDetails")
     }
 )
@@ -53,8 +53,9 @@ public class Pack {
     private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "pack_category_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonBackReference("pack-category-packs")
+    private PackCategory packCategory;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)

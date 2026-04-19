@@ -15,8 +15,9 @@ import java.util.List;
 @AllArgsConstructor
 public class PackResponse {
     private Integer packId;
-    private Integer productId;
-    private String productName;
+    private Integer packCategoryId;
+    private String packCategoryName;
+    private String packCategoryImageUrl;   // enriched — for monitoring display
     private PackStatus status;
     private Integer createdByAccountId;
     private LocalDateTime createdAt;
@@ -29,6 +30,10 @@ public class PackResponse {
     public static class Detail {
         private Integer cardId;
         private String cardName;
+        private String rarity;          // enriched — from CardTemplate.rarity
+        private String imagePath;       // enriched — from CardTemplate.imagePath
         private Integer positionIndex;
+        private String cardStatus;      // enriched — from Card.status
+        private String nfcUid;          // enriched — from Card.nfcUid
     }
 }

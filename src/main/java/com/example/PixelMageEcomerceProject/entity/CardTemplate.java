@@ -91,6 +91,9 @@ public class CardTemplate {
     @Column(name = "is_active", nullable = false)
     private Boolean active = true;
 
+    @Column(name = "is_visible", nullable = false)
+    private Boolean isVisible = true;
+
     @Column(name = "image_path", length = 500)
     private String imagePath;
 

@@ -29,7 +29,6 @@ public interface OrderItemMapper {
 
     @Mapping(target = "packId", source = "packId")
     @Mapping(target = "status", source = "status")
-    @Mapping(target = "product", source = "product")
     OrderResponse.PackSummary packToSummary(Pack pack);
 
     @Mapping(target = "productId", source = "productId")

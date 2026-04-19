@@ -107,4 +107,34 @@ public class ProductController {
                         return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
                 }
         }
+
+        @PutMapping("/{id}/toggle-visibility")
+        @Operation(summary = "Toggle product visibility", description = "Toggle product visibility")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Product visibility toggled successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
+                        @ApiResponse(responseCode = "404", description = "Product not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
+        })
+        public ResponseEntity<ResponseBase<ProductResponse>> toggleVisibility(@PathVariable Integer id) {
+                try {
+                        ProductResponse updatedProduct = productService.toggleVisibility(id);
+                        return ResponseBase.ok(updatedProduct, "Product visibility toggled successfully");
+                } catch (RuntimeException e) {
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
+                }
+        }
+
+        @PutMapping("/{id}/toggle-active")
+        @Operation(summary = "Toggle product active status", description = "Toggle product active status (Soft delete / Restore)")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Product active status toggled successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class))),
+                        @ApiResponse(responseCode = "404", description = "Product not found", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
+        })
+        public ResponseEntity<ResponseBase<ProductResponse>> toggleActive(@PathVariable Integer id) {
+                try {
+                        ProductResponse updatedProduct = productService.toggleActive(id);
+                        return ResponseBase.ok(updatedProduct, "Product active status toggled successfully");
+                } catch (RuntimeException e) {
+                        return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
+                }
+        }
 }

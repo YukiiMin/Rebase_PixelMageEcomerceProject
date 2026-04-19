@@ -24,5 +24,7 @@ public interface PackRepository extends JpaRepository<Pack, Integer> {
     List<Pack> findByStatus(PackStatus status);
 
     @EntityGraph(value = "Pack.withDetails", type = EntityGraph.EntityGraphType.LOAD)
-    List<Pack> findByProductProductIdAndStatus(Integer productId, PackStatus status);
+    List<Pack> findByPackCategoryPackCategoryIdAndStatus(Integer packCategoryId, PackStatus status);
+
+    long countByPackCategory_PackCategoryIdAndStatus(Integer packCategoryId, PackStatus status);
 }

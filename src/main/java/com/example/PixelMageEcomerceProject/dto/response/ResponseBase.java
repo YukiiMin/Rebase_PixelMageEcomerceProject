@@ -28,6 +28,10 @@ public class ResponseBase<T> {
         return ResponseEntity.status(status).body(new ResponseBase<>(status.value(), message, null));
     }
 
+    public static <T> ResponseEntity<ResponseBase<T>> error(HttpStatus status, String message, T data) {
+        return ResponseEntity.status(status).body(new ResponseBase<>(status.value(), message, data));
+    }
+
     public static <T> ResponseEntity<ResponseBase<T>> success(String message) {
         return ResponseEntity.ok(new ResponseBase<>(HttpStatus.OK.value(), message, null));
     }

@@ -33,12 +33,15 @@ public class PackController {
 
     private final PackService packService;
 
-    @PostMapping("/create")
-    @Operation(summary = "Create a pack (Manufacturing)", description = "Run RNG logic to pick card templates inside a pack product")
-    public ResponseEntity<ResponseBase<PackResponse>> createPack(@RequestBody PackRequestDTO requestDTO) {
+    // @PostMapping("/create") // Replaced by /generate
+    // public ResponseEntity<ResponseBase<PackResponse>> createPack(@RequestBody PackRequestDTO requestDTO) { ... }
+
+    @PostMapping("/generate")
+    @Operation(summary = "Generate bulk packs", description = "Run RNG logic to bulk generate packs based on category")
+    public ResponseEntity<ResponseBase<List<PackResponse>>> generatePacks(@RequestParam Integer packCategoryId, @RequestParam Integer quantity) {
         try {
-            PackResponse pack = packService.createPack(requestDTO);
-            return ResponseBase.created(pack, "Pack generated successfully via RNG");
+            List<PackResponse> packs = packService.generatePacks(packCategoryId, quantity);
+            return ResponseBase.created(packs, quantity + " packs generated successfully via RNG");
         } catch (Exception e) {
             return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }

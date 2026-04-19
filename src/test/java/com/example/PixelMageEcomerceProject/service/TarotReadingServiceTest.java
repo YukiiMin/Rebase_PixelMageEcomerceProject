@@ -149,7 +149,7 @@ public class TarotReadingServiceTest {
         when(sessionRepository.findFirstByAccount_CustomerIdAndStatusIn(eq(1), anyList()))
                 .thenReturn(Optional.empty());
 
-        assertThrows(InsufficientCardsException.class, () -> tarotReadingService.createSession(1, 1, "YOUR_DECK"));
+        assertThrows(InsufficientCardsException.class, () -> tarotReadingService.createSession(1, 1, "YOUR_DECK", "My question"));
     }
 
     // ── TASK-01 tests — 4 done conditions ────────────────────────────────────
@@ -172,7 +172,7 @@ public class TarotReadingServiceTest {
         // When / Then
         ActiveSessionExistsException ex = assertThrows(
                 ActiveSessionExistsException.class,
-                () -> tarotReadingService.createSession(1, 1, "YOUR_DECK")
+                () -> tarotReadingService.createSession(1, 1, "YOUR_DECK", "My question")
         );
         assertEquals(99, ex.getActiveSessionId());
         assertEquals("Bạn đang có một phiên đọc bài chưa hoàn thành.", ex.getMessage());
@@ -201,7 +201,7 @@ public class TarotReadingServiceTest {
         // Mock ValueOperations
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        tarotReadingService.createSession(1, 1, "EXPLORE");
+        tarotReadingService.createSession(1, 1, "EXPLORE", "My question");
 
         // Verify Redis key set with exactly 30 minutes TTL
         verify(valueOperations).set(
@@ -237,7 +237,7 @@ public class TarotReadingServiceTest {
         // Must throw RedisUnavailableException (503)
         assertThrows(
                 RedisUnavailableException.class,
-                () -> tarotReadingService.createSession(1, 1, "EXPLORE")
+                () -> tarotReadingService.createSession(1, 1, "EXPLORE", "My question")
         );
     }
 

@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -73,19 +74,23 @@ public class Product {
     @JsonIgnore
     private List<Card> cards;
 
-    // Relationship: Product 1-N Pack
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference("product-packs")
-    @JsonIgnore
-    private List<Pack> packs;
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "product_type", nullable = false, length = 20)
+    private com.example.PixelMageEcomerceProject.enums.ProductType productType = com.example.PixelMageEcomerceProject.enums.ProductType.GACHA_PACK;
 
-    // Relationship: Product M-N CardTemplate (Gacha Pool)
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "product_card_pools",
-        joinColumns = @JoinColumn(name = "product_id"),
-        inverseJoinColumns = @JoinColumn(name = "card_template_id")
-    )
-    @JsonIgnore
-    private List<CardTemplate> cardPools;
+    @Column(name = "is_visible", nullable = false)
+    private Boolean isVisible = true;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    // Relationship: Product -> PackCategory
+    @jakarta.persistence.ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pack_category_id")
+    private PackCategory packCategory;
+
+    // Relationship: Product -> CardTemplate
+    @jakarta.persistence.ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "card_template_id")
+    private CardTemplate cardTemplate;
 }

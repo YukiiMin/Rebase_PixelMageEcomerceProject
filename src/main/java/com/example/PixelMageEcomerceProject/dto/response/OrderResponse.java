@@ -54,7 +54,6 @@ public class OrderResponse {
     public static class PackSummary {
         private Integer packId;
         private String status;
-        private ProductSummary product;
     }
 
     @Data

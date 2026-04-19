@@ -1,6 +1,7 @@
 package com.example.PixelMageEcomerceProject.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,8 +34,14 @@ public class PackDetail {
     private Pack pack;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "card_id", nullable = false)
-    private Card card; // Card_product vật lý cụ thể
+    @JoinColumn(name = "card_id")
+    @JsonIgnore
+    private Card card;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "card_template_id")
+    @JsonIgnore
+    private CardTemplate cardTemplate;
 
     @Column(name = "position_index")
     private Integer positionIndex;

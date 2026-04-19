@@ -21,4 +21,6 @@ public interface CardRepository extends JpaRepository<Card, Integer> {
     List<Card> findByStatus(CardProductStatus status);
 
     List<Card> findByCardTemplate_RarityAndStatus(CardTemplateRarity rarity, CardProductStatus status);
+
+    long countByCardTemplate_CardTemplateIdAndStatus(Integer cardTemplateId, CardProductStatus status);
 }

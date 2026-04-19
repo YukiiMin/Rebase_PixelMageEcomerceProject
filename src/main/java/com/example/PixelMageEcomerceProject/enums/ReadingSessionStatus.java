@@ -7,5 +7,6 @@ public enum ReadingSessionStatus {
     PENDING,      // Chờ xử lý
     INTERPRETING, // Đang xử lý
     COMPLETED,    // Đã xử lý
-    EXPIRED       // EXPLORE session TTL hết hạn (30 phút)
+    EXPIRED,      // EXPLORE session TTL hết hạn (30 phút)
+    CANCELLED     // Người dùng chủ động hủy session
 }
