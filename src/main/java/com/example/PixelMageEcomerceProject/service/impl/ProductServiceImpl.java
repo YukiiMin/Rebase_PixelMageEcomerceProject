@@ -62,6 +62,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Caching(evict = {
         @CacheEvict(value = "products",     allEntries = true),
+        @CacheEvict(value = "products-public", allEntries = true),
         @CacheEvict(value = "product-by-id", allEntries = true)
     })
     public ProductResponse createProduct(ProductRequestDTO productRequestDTO) {
@@ -108,12 +109,32 @@ public class ProductServiceImpl implements ProductService {
         validateProductBeforeSave(product);
 
         Product savedProduct = productRepository.save(product);
+        
+        // Auto-generate initial stock for SINGLE_CARD
+        if (savedProduct.getProductType() == ProductType.SINGLE_CARD && 
+            savedProduct.getCardTemplate() != null && 
+            productRequestDTO.getInitialStock() != null && 
+            productRequestDTO.getInitialStock() > 0) {
+            
+            for (int i = 0; i < productRequestDTO.getInitialStock(); i++) {
+                com.example.PixelMageEcomerceProject.entity.Card card = new com.example.PixelMageEcomerceProject.entity.Card();
+                card.setCardTemplate(savedProduct.getCardTemplate());
+                card.setProduct(savedProduct);
+                card.setCardCondition(com.example.PixelMageEcomerceProject.enums.CardCondition.NEW);
+                // Set explicitly to READY so it shows up as stock immediately on the marketplace
+                card.setStatus(CardProductStatus.READY); 
+                card.setSerialNumber("PKG-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                cardRepository.save(card);
+            }
+        }
+        
         return mapToEnrichedResponse(savedProduct);
     }
 
     @Override
     @Caching(evict = {
         @CacheEvict(value = "products",      allEntries = true),
+        @CacheEvict(value = "products-public", allEntries = true),
         @CacheEvict(value = "product-by-id", key = "#id")
     })
     public ProductResponse updateProduct(Integer id, ProductRequestDTO productRequestDTO) {
@@ -176,6 +197,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Caching(evict = {
         @CacheEvict(value = "products",      allEntries = true),
+        @CacheEvict(value = "products-public", allEntries = true),
         @CacheEvict(value = "product-by-id", key = "#id")
     })
     public void deleteProduct(Integer id) {
@@ -204,8 +226,17 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Cacheable(value = "products-public")
     public List<ProductResponse> getPublicProducts() {
-        // Chỉ trả về sản phẩm có isVisible=true và isActive=true cho khách hàng
+        // Chỉ trả về sản phẩm có isVisible=true và isActive=true cho khách hàng, 
+        // VÀ các thành phần con của nó (Pack Category / Card Template) cũng phải đang hiển thị
         return productRepository.findAllByIsVisibleTrueAndIsActiveTrue().stream()
+                .filter(p -> {
+                    if (p.getProductType() == ProductType.GACHA_PACK) {
+                        return p.getPackCategory() != null && p.getPackCategory().getIsActive();
+                    } else if (p.getProductType() == ProductType.SINGLE_CARD) {
+                        return p.getCardTemplate() != null && p.getCardTemplate().getActive() && p.getCardTemplate().getIsVisible();
+                    }
+                    return false;
+                })
                 .map(this::mapToEnrichedResponse)
                 .toList();
     }

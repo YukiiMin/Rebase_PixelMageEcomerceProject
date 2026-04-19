@@ -54,6 +54,19 @@ public interface CardTemplateRepository extends JpaRepository<CardTemplate, Inte
     @EntityGraph(value = "CardTemplate.withDetails", type = EntityGraph.EntityGraphType.LOAD)
     Page<CardTemplate> findByCardFramework_FrameworkIdAndIsVisibleTrue(Integer frameworkId, Pageable pageable);
 
+    @Query("SELECT c FROM CardTemplate c WHERE " +
+           "(LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+           "(:rarity IS NULL OR c.rarity = :rarity) AND " +
+           "(:frameworkId IS NULL OR c.cardFramework.frameworkId = :frameworkId) AND " +
+           "(:includeInvisible = true OR c.isVisible = true)")
+    @EntityGraph(value = "CardTemplate.withDetails", type = EntityGraph.EntityGraphType.LOAD)
+    Page<CardTemplate> searchCardTemplates(
+            @Param("search") String search,
+            @Param("rarity") CardTemplateRarity rarity,
+            @Param("frameworkId") Integer frameworkId,
+            @Param("includeInvisible") boolean includeInvisible,
+            Pageable pageable);
+
     /**
      * Bypass @SQLRestriction("is_active = true") — dùng cho admin toggle visibility.
      * Native query đọc thẳng DB không qua Hibernate filter.
