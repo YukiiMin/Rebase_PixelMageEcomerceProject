@@ -178,4 +178,9 @@ public class CardTemplateServiceImpl implements CardTemplateService {
         );
         return cardTemplateRepository.save(template);
     }
+
+    @Override
+    public Page<CardTemplate> searchCardTemplates(String search, CardTemplateRarity rarity, Integer frameworkId, boolean includeInvisible, Pageable pageable) {
+        return cardTemplateRepository.searchCardTemplates(search, rarity, frameworkId, includeInvisible, pageable);
+    }
 }

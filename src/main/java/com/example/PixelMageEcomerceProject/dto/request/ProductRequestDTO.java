@@ -19,4 +19,5 @@ public class ProductRequestDTO {
     private Boolean isActive;
     private Integer packCategoryId;
     private Integer cardTemplateId;
+    private Integer initialStock;
 }

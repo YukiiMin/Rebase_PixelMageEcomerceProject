@@ -60,10 +60,14 @@ public class CardTemplateController {
     @ApiResponse(responseCode = "200", description = "Templates retrieved", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
     public ResponseEntity<ResponseBase<Page<CardTemplateResponse.Summary>>> getAllCardTemplates(
             @RequestParam(required = false, defaultValue = "false") boolean includeInvisible,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) CardTemplateRarity rarity,
+            @RequestParam(required = false) Integer frameworkId,
             Pageable pageable) {
-        Page<CardTemplate> page = includeInvisible 
-                ? cardTemplateService.getAllCardTemplates(pageable)
-                : cardTemplateService.getAllVisibleCardTemplates(pageable);
+        
+        // Normalize null → "" so LOWER(CONCAT('%', :search, '%')) matches everything (PostgreSQL bytea-null quirk)
+        String safeSearch = (search == null) ? "" : search;
+        Page<CardTemplate> page = cardTemplateService.searchCardTemplates(safeSearch, rarity, frameworkId, includeInvisible, pageable);
         
         Page<CardTemplateResponse.Summary> responsePage = page.map(cardTemplateMapper::toSummaryResponse);
         return ResponseBase.ok(responsePage, "Card templates retrieved successfully");
