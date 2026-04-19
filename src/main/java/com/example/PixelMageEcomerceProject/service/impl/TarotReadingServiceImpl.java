@@ -1,6 +1,7 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,11 +11,14 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
 import com.example.PixelMageEcomerceProject.dto.response.SpreadResponse;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.CardTemplate;
@@ -34,41 +38,36 @@ import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.DivineHelperRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingCardRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingSessionRepository;
+import com.example.PixelMageEcomerceProject.repository.CardTemplateRepository;
 import com.example.PixelMageEcomerceProject.repository.SpreadRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.CardTemplateService;
 import com.example.PixelMageEcomerceProject.service.interfaces.TarotReadingService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
 import com.example.PixelMageEcomerceProject.service.interfaces.WebSocketNotificationService;
-import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TarotReadingServiceImpl implements TarotReadingService {
 
-    // All dependencies final — constructor-injected by Lombok @RequiredArgsConstructor
+    // All dependencies final — constructor-injected by Lombok
+    // @RequiredArgsConstructor
     private final RedisTemplate<String, Object> redisTemplate;
     private final SpreadRepository spreadRepository;
     private final ReadingSessionRepository sessionRepository;
     private final ReadingCardRepository readingCardRepository;
     private final DivineHelperRepository divineHelperRepository;
     private final AccountRepository accountRepository;
+    private final CardTemplateRepository cardTemplateRepository;
     private final CardTemplateService cardTemplateService;
     private final UserInventoryService userInventoryService;
     private final SpreadMapper spreadMapper;
     private final WebSocketNotificationService wsNotificationService;
 
-    @Value("${OPENAI_API_KEY:}")
-    private String openAiApiKey;
-
-    @Value("${N8N_WEBHOOK_URL:http://localhost:5678/webhook/tarot-reading}")
+    @Value("${N8N_WEBHOOK_URL}")
     private String n8nWebhookUrl;
 
     private final SecureRandom secureRandom = new SecureRandom();
@@ -85,7 +84,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
 
     @Override
     @Transactional
-    public Map<String, Object> createSession(Integer accountId, Integer spreadId, String mode) {
+    public Map<String, Object> createSession(Integer accountId, Integer spreadId, String mode, String mainQuestion) {
         // Validate Spread
         Spread spread = spreadRepository.findById(spreadId)
                 .orElseThrow(() -> new RuntimeException("Spread not found"));
@@ -119,8 +118,8 @@ public class TarotReadingServiceImpl implements TarotReadingService {
 
                 if (usedToday) {
                     throw new GuestReadingLimitException(
-                        "Bạn đã dùng lượt đọc thử hôm nay. " +
-                        "Quay lại sau 00:00 hoặc mua Pack để đọc không giới hạn.");
+                            "Bạn đã dùng lượt đọc thử hôm nay. " +
+                                    "Quay lại sau 00:00 hoặc mua Pack để đọc không giới hạn.");
                 }
 
                 account.setGuestReadingUsedAt(now);
@@ -133,6 +132,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         session.setSpread(spread);
         session.setMode(mode == null ? ReadingSessionMode.EXPLORE : ReadingSessionMode.valueOf(mode));
         session.setStatus(ReadingSessionStatus.PENDING);
+        session.setMainQuestion(mainQuestion);
         ReadingSession savedSession = sessionRepository.save(session);
 
         // ── TASK-01: EXPLORE Redis TTL — fail-closed ───────────────────────────
@@ -201,7 +201,7 @@ public class TarotReadingServiceImpl implements TarotReadingService {
                         "YOUR_DECK: cần " + cardsToDraw + " lá, user chỉ có " + allCards.size());
             }
         } else {
-            allCards = cardTemplateService.getAllCardTemplates();
+            allCards = cardTemplateRepository.findAll();
             if (allCards.size() < cardsToDraw) {
                 throw new RuntimeException("Not enough cards in database to draw.");
             }
@@ -236,13 +236,15 @@ public class TarotReadingServiceImpl implements TarotReadingService {
             Map<String, Object> cardMap = new HashMap<>();
             cardMap.put("readingCardId", savedCard.getReadingCardId());
             cardMap.put("positionIndex", savedCard.getPositionIndex());
-            cardMap.put("positionName", savedCard.getPositionName() != null ? savedCard.getPositionName() : "Vị trí " + savedCard.getPositionIndex());
+            cardMap.put("positionName", savedCard.getPositionName() != null ? savedCard.getPositionName()
+                    : "Vị trí " + savedCard.getPositionIndex());
             cardMap.put("isReversed", isReversed);
 
             Map<String, Object> templateMap = new HashMap<>();
             templateMap.put("cardTemplateId", chosenCard.getCardTemplateId());
             templateMap.put("name", chosenCard.getName());
-            templateMap.put("imageUrl", chosenCard.getImagePath() != null ? chosenCard.getImagePath() : chosenCard.getDesignPath());
+            templateMap.put("imageUrl",
+                    chosenCard.getImagePath() != null ? chosenCard.getImagePath() : chosenCard.getDesignPath());
             templateMap.put("rarity", chosenCard.getRarity() != null ? chosenCard.getRarity().name() : "COMMON");
 
             cardMap.put("cardTemplate", templateMap);
@@ -271,16 +273,17 @@ public class TarotReadingServiceImpl implements TarotReadingService {
 
         String interpretation = "";
 
-        // Send to N8N/OpenAI or Fallback
-        if (openAiApiKey == null || openAiApiKey.trim().isEmpty()) {
-            // FALLBACK MODE
-            interpretation = generateFallbackInterpretation(drawnCards);
-        } else {
-            // HAPPY PATH: Try N8N Webhook
+        if (n8nWebhookUrl != null && !n8nWebhookUrl.trim().isEmpty()) {
             try {
+                org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+                factory.setConnectTimeout(5000); // 5s timeout kết nối
+                factory.setReadTimeout(120000); // 120s timeout chờ AI n8n trả lời
+                RestTemplate timeoutRestTemplate = new RestTemplate(factory);
+
                 Map<String, Object> payload = new HashMap<>();
                 payload.put("sessionId", sessionId);
                 payload.put("spread", session.getSpread().getName());
+                payload.put("mainQuestion", session.getMainQuestion() != null ? session.getMainQuestion() : "");
 
                 List<Map<String, Object>> cardsData = new ArrayList<>();
                 for (ReadingCard rc : drawnCards) {
@@ -288,21 +291,39 @@ public class TarotReadingServiceImpl implements TarotReadingService {
                     cData.put("cardName", rc.getCardTemplate().getName());
                     cData.put("isReversed", rc.getIsReversed());
                     cData.put("position", rc.getPositionIndex());
+
+                    Optional<DivineHelper> helperOpt = divineHelperRepository
+                            .findByCardTemplate_CardTemplateId(rc.getCardTemplate().getCardTemplateId());
+                    if (helperOpt.isPresent()) {
+                        DivineHelper helper = helperOpt.get();
+                        if (Boolean.TRUE.equals(rc.getIsReversed())) {
+                            cData.put("meaning", helper.getReversedMeaning());
+                        } else {
+                            cData.put("meaning", helper.getUprightMeaning());
+                        }
+                    } else {
+                        cData.put("meaning", "Thông điệp vũ trụ ẩn giấu");
+                    }
                     cardsData.add(cData);
                 }
                 payload.put("cards", cardsData);
 
+                log.info("[TAROT AI N8N] Gửi request đến n8n cho Session ID: {}", sessionId);
                 @SuppressWarnings("unchecked")
-                ResponseEntity<Map<String, Object>> response = (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) restTemplate.postForEntity(n8nWebhookUrl, payload, Map.class);
+                ResponseEntity<Map<String, Object>> response = (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) timeoutRestTemplate
+                        .postForEntity(n8nWebhookUrl, payload, Map.class);
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                     interpretation = (String) response.getBody().get("aiInterpretation");
-                } else {
-                    interpretation = generateFallbackInterpretation(drawnCards); // N8N timeout/fail fallback
+                    log.info("[TAROT AI N8N] Nhận kêt quả n8n thành công cho Session ID: {}", sessionId);
                 }
             } catch (Exception e) {
-                // Fallback on timeout or connection refused
-                interpretation = generateFallbackInterpretation(drawnCards);
+                log.warn("[TAROT AI N8N] Lỗi kết nối n8n/timeout, dùng Fallback. Lỗi: {}", e.getMessage());
             }
+        }
+
+        // Nếu n8n trả về rỗng, sập, hoặc tắt, dùng Fallback
+        if (interpretation == null || interpretation.trim().isEmpty()) {
+            interpretation = generateFallbackInterpretation(session, drawnCards);
         }
 
         session.setAiInterpretation(interpretation);
@@ -325,16 +346,24 @@ public class TarotReadingServiceImpl implements TarotReadingService {
         return response;
     }
 
-    private String generateFallbackInterpretation(List<ReadingCard> cards) {
-        StringBuilder sb = new StringBuilder("Dựa vào những lá bài bạn đã rút, đây là thông điệp cho bạn: \n");
+    private String generateFallbackInterpretation(ReadingSession session, List<ReadingCard> cards) {
+        StringBuilder sb = new StringBuilder();
+
+        if (session.getMainQuestion() != null && !session.getMainQuestion().trim().isEmpty()) {
+            sb.append("🔮 Về câu hỏi của bạn: \"").append(session.getMainQuestion()).append("\"\n\n");
+            sb.append("Dưới đây là thông điệp từ vũ trụ dành cho bạn:\n\n");
+        } else {
+            sb.append("🔮 Dựa vào những lá bài bạn đã rút, đây là thông điệp dành cho bạn: \n\n");
+        }
+
         for (ReadingCard card : cards) {
-            sb.append("- Vị trí ").append(card.getPositionIndex()).append(": ")
+            sb.append("• Vị trí ").append(card.getPositionIndex()).append(": ")
                     .append(card.getCardTemplate().getName());
 
             if (Boolean.TRUE.equals(card.getIsReversed())) {
-                sb.append(" (Ngược). ");
+                sb.append(" (Ngược).\n\nÝ nghĩa: ");
             } else {
-                sb.append(" (Xuôi). ");
+                sb.append(" (Xuôi).\n\nÝ nghĩa: ");
             }
 
             Optional<DivineHelper> helperOpt = divineHelperRepository
@@ -342,15 +371,15 @@ public class TarotReadingServiceImpl implements TarotReadingService {
             if (helperOpt.isPresent()) {
                 DivineHelper helper = helperOpt.get();
                 if (Boolean.TRUE.equals(card.getIsReversed())) {
-                    sb.append(helper.getReversedMeaning()).append("\n");
+                    sb.append(helper.getReversedMeaning()).append("\n\n");
                 } else {
-                    sb.append(helper.getUprightMeaning()).append("\n");
+                    sb.append(helper.getUprightMeaning()).append("\n\n");
                 }
             } else {
-                sb.append("Lá bài mang bí ẩn tự nhiên chờ bạn tự khám phá.\n");
+                sb.append("Lá bài mang bí ẩn tự nhiên chờ bạn tự khám phá.\n\n");
             }
         }
-        sb.append("\n(Được cung cấp bởi Cơ chế Lốp Dự Phòng Local-Fallback).");
+        sb.append("\n(Quẻ bói này được tạo tự động bởi Oracle mô phỏng).");
         return sb.toString();
     }
 
@@ -358,5 +387,43 @@ public class TarotReadingServiceImpl implements TarotReadingService {
     public List<ReadingSession> getSessionsByAccount(Integer accountId) {
         return sessionRepository.findByAccount_CustomerIdAndMode(accountId,
                 ReadingSessionMode.YOUR_DECK);
+    }
+
+    @Override
+    public ReadingSession getSessionById(Integer sessionId) {
+        return sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found with id: " + sessionId));
+    }
+
+    @Override
+    @Transactional
+    public void cancelSession(Integer sessionId, Integer accountId) {
+        ReadingSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found with id: " + sessionId));
+
+        // Ownership check
+        if (!session.getAccount().getCustomerId().equals(accountId)) {
+            throw new RuntimeException("Không có quyền hủy session này.");
+        }
+
+        // Only cancellable if still active
+        if (!ReadingSessionStatus.PENDING.equals(session.getStatus())
+                && !ReadingSessionStatus.INTERPRETING.equals(session.getStatus())) {
+            log.info("[TAROT] cancelSession #{} skipped — already in status {}", sessionId, session.getStatus());
+            return; // Idempotent — nếu đã xong thì bỏ qua
+        }
+
+        session.setStatus(ReadingSessionStatus.CANCELLED);
+        sessionRepository.save(session);
+
+        // Xóa Redis TTL key nếu có (EXPLORE mode)
+        String redisKey = EXPLORE_REDIS_KEY_PREFIX + sessionId;
+        try {
+            redisTemplate.delete(redisKey);
+        } catch (Exception e) {
+            log.warn("[TAROT] cancelSession #{} — failed to delete Redis key: {}", sessionId, e.getMessage());
+        }
+
+        log.info("[TAROT] cancelSession #{} — cancelled by accountId={}", sessionId, accountId);
     }
 }

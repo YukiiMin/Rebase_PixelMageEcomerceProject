@@ -26,7 +26,7 @@ public class NotificationEvent {
     private Map<String, Object> payload;
 
     @Builder.Default
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private String timestamp = LocalDateTime.now().toString();
 
     // ── Static factory methods ──────────────────────────────────────────
 

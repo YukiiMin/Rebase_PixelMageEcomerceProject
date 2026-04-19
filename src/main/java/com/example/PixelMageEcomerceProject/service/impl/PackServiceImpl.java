@@ -2,7 +2,11 @@ package com.example.PixelMageEcomerceProject.service.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -23,6 +27,7 @@ import com.example.PixelMageEcomerceProject.repository.CardRepository;
 import com.example.PixelMageEcomerceProject.repository.PackDetailRepository;
 import com.example.PixelMageEcomerceProject.repository.PackRepository;
 import com.example.PixelMageEcomerceProject.repository.ProductRepository;
+import com.example.PixelMageEcomerceProject.repository.PackCategoryRepository;
 import com.example.PixelMageEcomerceProject.service.interfaces.PackService;
 import com.example.PixelMageEcomerceProject.exceptions.InsufficientCardsException;
 import com.example.PixelMageEcomerceProject.mapper.PackMapper;
@@ -42,6 +47,7 @@ public class PackServiceImpl implements PackService {
     private final ProductRepository productRepository;
     private final AccountRepository accountRepository;
     private final CardRepository cardRepository;
+    private final PackCategoryRepository packCategoryRepository;
     private final PackMapper packMapper;
 
     @Override
@@ -52,71 +58,91 @@ public class PackServiceImpl implements PackService {
         @CacheEvict(value = "packs-by-product-status",      allEntries = true)
     })
     public PackResponse createPack(PackRequestDTO requestDTO) {
-        Product product = productRepository.findById(requestDTO.getProductId())
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + requestDTO.getProductId()));
-
-        Account createdBy = null;
-        if (requestDTO.getCreatedByAccountId() != null) {
-            createdBy = accountRepository.findById(requestDTO.getCreatedByAccountId())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Account not found with id: " + requestDTO.getCreatedByAccountId()));
-        }
-
-        List<Integer> cardIds = requestDTO.getCardIds();
-        if (cardIds == null || cardIds.isEmpty()) {
-            throw new RuntimeException("Card IDs list is required to create a pack");
-        }
-
-        // 3. Validate số card khớp với SKU
-        if (product.getProductId() == 1 && cardIds.size() != 5) {
-            throw new RuntimeException("Standard Pack (id=1) must have exactly 5 cards");
-        }
-        if (product.getProductId() == 2 && cardIds.size() != 16) {
-            throw new RuntimeException("Blister Promo (id=2) must have exactly 16 cards");
-        }
-        if (product.getProductId() == 3 && cardIds.size() != 50) {
-            throw new RuntimeException("Major Sealed Box (id=3) must have exactly 50 cards");
-        }
-
-        // 2. Validate: tất cả Card phải là READY và thuộc productId đúng
-        List<Card> cards = cardRepository.findAllById(cardIds);
-        if (cards.size() != cardIds.size()) {
-            throw new RuntimeException("Some cards were not found based on provided IDs");
-        }
-        for (Card card : cards) {
-            if (card.getStatus() != CardProductStatus.READY) {
-                throw new InsufficientCardsException("Card " + card.getCardId() + " is not READY");
-            }
-            if (!card.getProduct().getProductId().equals(product.getProductId())) {
-                throw new RuntimeException("Card " + card.getCardId() + " does not belong to product " + product.getProductId());
-            }
-        }
-
-        // 1. Create Pack entity
-        Pack pack = new Pack();
-        pack.setProduct(product);
-        pack.setStatus(PackStatus.STOCKED);
-        pack.setCreatedBy(createdBy);
-        pack = packRepository.save(pack);
-
-        // 4. Tạo Pack Details từ list cardIds
-        List<PackDetail> packDetails = new ArrayList<>();
-        int slot = 0;
-        for (Card card : cards) {
-            PackDetail detail = new PackDetail();
-            detail.setPack(pack);
-            detail.setCard(card);
-            detail.setPositionIndex(slot + 1);
-            packDetails.add(detail);
-            slot++;
-        }
-
-        packDetailRepository.saveAll(packDetails);
-        pack.setPackDetails(packDetails);
-        return packMapper.toResponse(packRepository.save(pack));
+        // Obsolete
+        return null;
     }
 
+    @Override
+    @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "packs",                        allEntries = true),
+        @CacheEvict(value = "packs-by-status",              allEntries = true),
+        @CacheEvict(value = "packs-by-product-status",      allEntries = true)
+    })
+    public List<PackResponse> generatePacks(Integer packCategoryId, Integer quantity) {
+        com.example.PixelMageEcomerceProject.entity.PackCategory category = packCategoryRepository.findById(packCategoryId)
+                .orElseThrow(() -> new RuntimeException("PackCategory not found"));
 
+        List<com.example.PixelMageEcomerceProject.entity.CardTemplate> pool = category.getCardPools();
+        if (pool == null || pool.isEmpty()) {
+            throw new RuntimeException("This PackCategory has no CardTemplate pools assigned.");
+        }
+
+        Map<String, Integer> rarityRates;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            rarityRates = mapper.readValue(category.getRarityRates(), new TypeReference<Map<String, Integer>>() {});
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid rarity_rates JSON format in PackCategory.", e);
+        }
+
+        List<Pack> newlyGeneratedPacks = new ArrayList<>();
+        Random random = new Random();
+
+        for (int i = 0; i < quantity; i++) {
+            Pack newPack = new Pack();
+            newPack.setPackCategory(category);
+            newPack.setStatus(PackStatus.STOCKED); // Initial status
+            newPack.setPackDetails(new ArrayList<>());
+            Pack savedPack = packRepository.save(newPack);
+
+            for (int k = 0; k < category.getCardsPerPack(); k++) {
+                com.example.PixelMageEcomerceProject.entity.CardTemplate selectedTemplate = rollRarityAndPickTemplate(rarityRates, pool, random);
+                
+                PackDetail pd = new PackDetail();
+                pd.setPack(savedPack);
+                pd.setCardTemplate(selectedTemplate);
+                // card field is nullable because the physical card hasn't been scanned/assigned yet
+                packDetailRepository.save(pd);
+                
+                savedPack.getPackDetails().add(pd);
+            }
+            newlyGeneratedPacks.add(savedPack);
+        }
+        
+        return newlyGeneratedPacks.stream().map(packMapper::toResponse).toList();
+    }
+
+    private com.example.PixelMageEcomerceProject.entity.CardTemplate rollRarityAndPickTemplate(Map<String, Integer> rarityRates, List<com.example.PixelMageEcomerceProject.entity.CardTemplate> pool, Random random) {
+        // Roll rarity
+        int totalWeight = rarityRates.values().stream().mapToInt(Integer::intValue).sum();
+        if (totalWeight <= 0) totalWeight = 100;
+        
+        int roll = random.nextInt(totalWeight) + 1; // 1 to totalWeight
+        String selectedRarity = "COMMON";
+        int currentSum = 0;
+        
+        for (Map.Entry<String, Integer> entry : rarityRates.entrySet()) {
+            currentSum += entry.getValue();
+            if (roll <= currentSum) {
+                selectedRarity = entry.getKey();
+                break;
+            }
+        }
+        
+        // Filter pool by rarity
+        String finalRarity = selectedRarity;
+        List<com.example.PixelMageEcomerceProject.entity.CardTemplate> availableTemplates = pool.stream()
+            .filter(ct -> ct.getRarity().name().equalsIgnoreCase(finalRarity))
+            .toList();
+            
+        if (availableTemplates.isEmpty()) {
+            // fallback if no card of that rarity exists
+            availableTemplates = pool; 
+        }
+        
+        return availableTemplates.get(random.nextInt(availableTemplates.size()));
+    }
 
     @Override
     @Caching(evict = {
@@ -149,9 +175,9 @@ public class PackServiceImpl implements PackService {
     }
 
     @Override
-    @Cacheable(value = "packs-by-product-status", key = "#productId + '-' + #status")
-    public List<PackResponse> getPacksByProductAndStatus(Integer productId, PackStatus status) {
-        return packRepository.findByProductProductIdAndStatus(productId, status).stream().map(packMapper::toResponse).toList();
+    @Cacheable(value = "packs-by-product-status", key = "#packCategoryId + '-' + #status")
+    public List<PackResponse> getPacksByProductAndStatus(Integer packCategoryId, PackStatus status) {
+        return packRepository.findByPackCategoryPackCategoryIdAndStatus(packCategoryId, status).stream().map(packMapper::toResponse).toList();
     }
 
     @Override

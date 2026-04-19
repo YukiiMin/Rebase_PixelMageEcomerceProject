@@ -283,9 +283,12 @@ public class OrderServiceImpl implements OrderService {
                     continue;
                 }
 
-                // Find first available (STOCKED) Pack for this product — FIFO
-                List<Pack> stockedPacks = packRepository.findByProductProductIdAndStatus(
-                        item.getProduct().getProductId(), PackStatus.STOCKED);
+                // Find first available (STOCKED) Pack for this product's PackCategory — FIFO
+                List<Pack> stockedPacks = new ArrayList<>();
+                if (item.getProduct().getPackCategory() != null) {
+                    stockedPacks = packRepository.findByPackCategoryPackCategoryIdAndStatus(
+                            item.getProduct().getPackCategory().getPackCategoryId(), PackStatus.STOCKED);
+                }
 
                 if (!stockedPacks.isEmpty()) {
                     Pack pack = stockedPacks.get(0);

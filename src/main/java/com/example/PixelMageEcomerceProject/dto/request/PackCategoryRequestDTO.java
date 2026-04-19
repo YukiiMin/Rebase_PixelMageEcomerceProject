@@ -4,19 +4,17 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductRequestDTO {
+public class PackCategoryRequestDTO {
     private String name;
     private String description;
-    private BigDecimal price;
     private String imageUrl;
-    private com.example.PixelMageEcomerceProject.enums.ProductType productType;
-    private Boolean isVisible;
+    private Integer cardsPerPack;
+    private String rarityRates; // JSON string
     private Boolean isActive;
-    private Integer packCategoryId;
-    private Integer cardTemplateId;
+    private List<Integer> cardTemplateIds; // For relating M-N CardTemplates
 }

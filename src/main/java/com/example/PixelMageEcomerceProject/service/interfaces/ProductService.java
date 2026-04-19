@@ -12,5 +12,7 @@ public interface ProductService {
     ProductResponse getProductById(Integer id);
     List<ProductResponse> getAllProducts();
     ProductResponse getProductByName(String name);
+    ProductResponse toggleVisibility(Integer id);
+    ProductResponse toggleActive(Integer id);
 }
 

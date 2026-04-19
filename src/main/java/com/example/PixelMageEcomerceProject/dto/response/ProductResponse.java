@@ -21,4 +21,10 @@ public class ProductResponse {
     private Integer poolSize;
     private Integer stockCount;
     private List<CardTemplateResponse.Summary> poolPreview;
+    
+    private com.example.PixelMageEcomerceProject.enums.ProductType productType;
+    private Boolean isVisible;
+    private Boolean isActive;
+    private Integer packCategoryId;
+    private Integer cardTemplateId;
 }

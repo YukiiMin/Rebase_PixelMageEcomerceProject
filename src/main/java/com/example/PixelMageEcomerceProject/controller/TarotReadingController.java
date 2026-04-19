@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -56,13 +57,17 @@ public class TarotReadingController {
             Integer accountId = extractAccountId(auth);
             Integer spreadId = (Integer) payload.get("spreadId");
             String mode = (String) payload.get("mode");
-            log.info("[TAROT] createSession: accountId={}, spreadId={}, mode={}", accountId, spreadId, mode);
+            String mainQuestion = (String) payload.get("mainQuestion");
+            log.info("[TAROT] createSession: accountId={}, spreadId={}, mode={}, mainQuestion={}", accountId, spreadId, mode, mainQuestion);
 
-            Map<String, Object> result = tarotReadingService.createSession(accountId, spreadId, mode);
+            Map<String, Object> result = tarotReadingService.createSession(accountId, spreadId, mode, mainQuestion);
             return ResponseBase.ok(result, "Session created successfully");
         } catch (IllegalStateException e) {
             log.warn("[TAROT] createSession auth error: {}", e.getMessage());
             return ResponseBase.error(HttpStatus.UNAUTHORIZED, e.getMessage());
+        } catch (com.example.PixelMageEcomerceProject.exceptions.ActiveSessionExistsException e) {
+            log.warn("[TAROT] createSession conflict: {}", e.getMessage());
+            return ResponseBase.error(HttpStatus.CONFLICT, e.getMessage(), Map.of("activeSessionId", e.getActiveSessionId()));
         } catch (Exception e) {
             log.error("[TAROT] createSession failed: {}", e.getMessage(), e);
             return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -100,6 +105,20 @@ public class TarotReadingController {
     }
 
     /**
+     * Lấy thông tin chi tiết một phiên
+     */
+    @GetMapping("/sessions/{id}")
+    public ResponseEntity<ResponseBase<ReadingSession>> getSessionById(@PathVariable("id") Integer sessionId) {
+        try {
+            ReadingSession session = tarotReadingService.getSessionById(sessionId);
+            return ResponseBase.ok(session, "Session retrieved successfully");
+        } catch (Exception e) {
+            log.error("[TAROT] getSessionById failed: {}", e.getMessage(), e);
+            return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+    }
+
+    /**
      * Lấy danh sách các phiên đọc bài của tôi
      */
     @GetMapping("/sessions")
@@ -114,6 +133,28 @@ public class TarotReadingController {
             return ResponseBase.error(HttpStatus.UNAUTHORIZED, e.getMessage());
         } catch (Exception e) {
             log.error("[TAROT] getMyReadingSessions failed: {}", e.getMessage(), e);
+            return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * Hủy / bỏ giữa chừng một phiên đang PENDING hoặc INTERPRETING.
+     * Idempotent — nếu session đã COMPLETED/EXPIRED thì trả về 200 bình thường.
+     */
+    @DeleteMapping("/sessions/{id}")
+    public ResponseEntity<ResponseBase<Void>> cancelSession(
+            @PathVariable("id") Integer sessionId,
+            org.springframework.security.core.Authentication auth) {
+        try {
+            Integer accountId = extractAccountId(auth);
+            tarotReadingService.cancelSession(sessionId, accountId);
+            log.info("[TAROT] cancelSession #{} — OK by accountId={}", sessionId, accountId);
+            return ResponseBase.ok(null, "Session cancelled successfully");
+        } catch (IllegalStateException e) {
+            log.warn("[TAROT] cancelSession auth error: {}", e.getMessage());
+            return ResponseBase.error(HttpStatus.UNAUTHORIZED, e.getMessage());
+        } catch (Exception e) {
+            log.error("[TAROT] cancelSession #{} failed: {}", sessionId, e.getMessage(), e);
             return ResponseBase.error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }

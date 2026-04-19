@@ -83,8 +83,8 @@ public class DashboardServiceImpl implements DashboardService {
         Map<String, BigDecimal> packTypeMap = new HashMap<>();
         for (Order order : succeededOrders) {
             for (OrderItem item : order.getOrderItems()) {
-                if (item.getPack() != null && item.getPack().getProduct() != null) {
-                    String packName = item.getPack().getProduct().getName();
+                if (item.getPack() != null && item.getPack().getPackCategory() != null) {
+                    String packName = item.getPack().getPackCategory().getName();
                     packTypeMap.put(packName, packTypeMap.getOrDefault(packName, BigDecimal.ZERO).add(item.getSubtotal()));
                 }
             }
