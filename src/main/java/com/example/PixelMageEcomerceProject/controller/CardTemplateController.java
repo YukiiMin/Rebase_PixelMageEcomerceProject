@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -57,10 +58,15 @@ public class CardTemplateController {
     @GetMapping
     @Operation(summary = "Get all active CardTemplates (Public — Gallery listing, paginated)", description = "Supports pagination: ?page=0&size=12&sort=name,asc. FE controls page size. Results NOT cached when paginated.")
     @ApiResponse(responseCode = "200", description = "Templates retrieved", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
-    public ResponseEntity<ResponseBase<Page<CardTemplateResponse.Summary>>> getAllCardTemplates(Pageable pageable) {
-        Page<CardTemplateResponse.Summary> page = cardTemplateService.getAllCardTemplates(pageable)
-                .map(cardTemplateMapper::toSummaryResponse);
-        return ResponseBase.ok(page, "Card templates retrieved successfully");
+    public ResponseEntity<ResponseBase<Page<CardTemplateResponse.Summary>>> getAllCardTemplates(
+            @RequestParam(required = false, defaultValue = "false") boolean includeInvisible,
+            Pageable pageable) {
+        Page<CardTemplate> page = includeInvisible 
+                ? cardTemplateService.getAllCardTemplates(pageable)
+                : cardTemplateService.getAllVisibleCardTemplates(pageable);
+        
+        Page<CardTemplateResponse.Summary> responsePage = page.map(cardTemplateMapper::toSummaryResponse);
+        return ResponseBase.ok(responsePage, "Card templates retrieved successfully");
     }
 
     @GetMapping("/{id}")
@@ -104,28 +110,43 @@ public class CardTemplateController {
     @GetMapping("/by-rarity/{rarity}")
     @Operation(summary = "Filter templates by rarity (Public, paginated)", description = "rarity: COMMON|RARE|LEGENDARY. Supports ?page=0&size=12&sort=name,asc")
     public ResponseEntity<ResponseBase<Page<CardTemplateResponse.Summary>>> getByRarity(
-            @PathVariable CardTemplateRarity rarity, Pageable pageable) {
-        Page<CardTemplateResponse.Summary> page = cardTemplateService.getAllByRarity(rarity, pageable)
-                .map(cardTemplateMapper::toSummaryResponse);
-        return ResponseBase.ok(page, "Templates filtered by rarity: " + rarity);
+            @PathVariable CardTemplateRarity rarity, 
+            @RequestParam(required = false, defaultValue = "false") boolean includeInvisible,
+            Pageable pageable) {
+        Page<CardTemplate> page = includeInvisible
+                ? cardTemplateService.getAllByRarity(rarity, pageable)
+                : cardTemplateService.getAllVisibleByRarity(rarity, pageable);
+                
+        Page<CardTemplateResponse.Summary> responsePage = page.map(cardTemplateMapper::toSummaryResponse);
+        return ResponseBase.ok(responsePage, "Templates filtered by rarity: " + rarity);
     }
 
     @GetMapping("/by-arcana/{arcanaType}")
     @Operation(summary = "Filter templates by arcana type (Public, paginated)", description = "arcanaType: MAJOR|MINOR. Supports ?page=0&size=12&sort=name,asc")
     public ResponseEntity<ResponseBase<Page<CardTemplateResponse.Summary>>> getByArcana(
-            @PathVariable ArcanaType arcanaType, Pageable pageable) {
-        Page<CardTemplateResponse.Summary> page = cardTemplateService.getAllByArcana(arcanaType, pageable)
-                .map(cardTemplateMapper::toSummaryResponse);
-        return ResponseBase.ok(page, "Templates filtered by arcana type: " + arcanaType);
+            @PathVariable ArcanaType arcanaType, 
+            @RequestParam(required = false, defaultValue = "false") boolean includeInvisible,
+            Pageable pageable) {
+        Page<CardTemplate> page = includeInvisible
+                ? cardTemplateService.getAllByArcana(arcanaType, pageable)
+                : cardTemplateService.getAllVisibleByArcana(arcanaType, pageable);
+                
+        Page<CardTemplateResponse.Summary> responsePage = page.map(cardTemplateMapper::toSummaryResponse);
+        return ResponseBase.ok(responsePage, "Templates filtered by arcana type: " + arcanaType);
     }
 
     @GetMapping("/by-framework/{frameworkId}")
     @Operation(summary = "Filter templates by CardFramework ID (Public, paginated)", description = "Returns all templates belonging to a specific framework. Supports ?page=0&size=12&sort=name,asc")
     public ResponseEntity<ResponseBase<Page<CardTemplateResponse.Summary>>> getByFramework(
-            @PathVariable Integer frameworkId, Pageable pageable) {
-        Page<CardTemplateResponse.Summary> page = cardTemplateService.getAllByFramework(frameworkId, pageable)
-                .map(cardTemplateMapper::toSummaryResponse);
-        return ResponseBase.ok(page, "Templates filtered by framework: " + frameworkId);
+            @PathVariable Integer frameworkId, 
+            @RequestParam(required = false, defaultValue = "false") boolean includeInvisible,
+            Pageable pageable) {
+        Page<CardTemplate> page = includeInvisible
+                ? cardTemplateService.getAllByFramework(frameworkId, pageable)
+                : cardTemplateService.getAllVisibleByFramework(frameworkId, pageable);
+                
+        Page<CardTemplateResponse.Summary> responsePage = page.map(cardTemplateMapper::toSummaryResponse);
+        return ResponseBase.ok(responsePage, "Templates filtered by framework: " + frameworkId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -183,6 +204,25 @@ public class CardTemplateController {
         try {
             cardTemplateService.deleteCardTemplate(id);
             return ResponseBase.ok(null, "Card template deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/visibility")
+    @SecurityRequirement(name = "bearerAuth")
+    @Secured({ "ROLE_ADMIN", "ROLE_STAFF" })
+    @Operation(summary = "Toggle CardTemplate visibility (Admin/Staff)",
+               description = "Toggle isVisible true ⇔ false. Hidden templates are NOT shown in the public Card Gallery.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Visibility toggled"),
+            @ApiResponse(responseCode = "404", description = "Template not found")
+    })
+    public ResponseEntity<ResponseBase<CardTemplateResponse>> toggleVisibility(
+            @PathVariable Integer id) {
+        try {
+            CardTemplate updated = cardTemplateService.toggleVisibility(id);
+            return ResponseBase.ok(cardTemplateMapper.toResponse(updated), "Visibility toggled");
         } catch (RuntimeException e) {
             return ResponseBase.error(HttpStatus.NOT_FOUND, e.getMessage());
         }

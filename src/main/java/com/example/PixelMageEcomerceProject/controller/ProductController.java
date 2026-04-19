@@ -53,13 +53,23 @@ public class ProductController {
         }
 
         @GetMapping
-        @Operation(summary = "Get all products", description = "Retrieve all products")
+        @Operation(summary = "Get all products (Admin)", description = "Retrieve all products including hidden ones — Admin only")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Products retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
         })
         public ResponseEntity<ResponseBase<List<ProductResponse>>> getAllProducts() {
                 List<ProductResponse> products = productService.getAllProducts();
                 return ResponseBase.ok(products, "Products retrieved successfully");
+        }
+
+        @GetMapping("/public")
+        @Operation(summary = "Get public products", description = "Retrieve only visible and active products for customers — no auth required")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Public products retrieved successfully", content = @Content(schema = @Schema(implementation = ResponseBase.class)))
+        })
+        public ResponseEntity<ResponseBase<List<ProductResponse>>> getPublicProducts() {
+                List<ProductResponse> products = productService.getPublicProducts();
+                return ResponseBase.ok(products, "Public products retrieved successfully");
         }
 
         @GetMapping("/{id}")

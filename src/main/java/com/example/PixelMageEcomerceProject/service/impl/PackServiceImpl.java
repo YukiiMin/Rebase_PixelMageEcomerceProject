@@ -55,7 +55,10 @@ public class PackServiceImpl implements PackService {
     @Caching(evict = {
         @CacheEvict(value = "packs",                        allEntries = true),
         @CacheEvict(value = "packs-by-status",              allEntries = true),
-        @CacheEvict(value = "packs-by-product-status",      allEntries = true)
+        @CacheEvict(value = "packs-by-product-status",      allEntries = true),
+        @CacheEvict(value = "products",                     allEntries = true),
+        @CacheEvict(value = "products-public",              allEntries = true),
+        @CacheEvict(value = "product-by-id",                allEntries = true)
     })
     public PackResponse createPack(PackRequestDTO requestDTO) {
         // Obsolete
@@ -67,7 +70,10 @@ public class PackServiceImpl implements PackService {
     @Caching(evict = {
         @CacheEvict(value = "packs",                        allEntries = true),
         @CacheEvict(value = "packs-by-status",              allEntries = true),
-        @CacheEvict(value = "packs-by-product-status",      allEntries = true)
+        @CacheEvict(value = "packs-by-product-status",      allEntries = true),
+        @CacheEvict(value = "products",                     allEntries = true),
+        @CacheEvict(value = "products-public",              allEntries = true),
+        @CacheEvict(value = "product-by-id",                allEntries = true)
     })
     public List<PackResponse> generatePacks(Integer packCategoryId, Integer quantity) {
         com.example.PixelMageEcomerceProject.entity.PackCategory category = packCategoryRepository.findById(packCategoryId)
@@ -148,7 +154,10 @@ public class PackServiceImpl implements PackService {
     @Caching(evict = {
         @CacheEvict(value = "packs",                        allEntries = true),
         @CacheEvict(value = "packs-by-status",              allEntries = true),
-        @CacheEvict(value = "packs-by-product-status",      allEntries = true)
+        @CacheEvict(value = "packs-by-product-status",      allEntries = true),
+        @CacheEvict(value = "products",                     allEntries = true),
+        @CacheEvict(value = "products-public",              allEntries = true),
+        @CacheEvict(value = "product-by-id",                allEntries = true)
     })
     public PackResponse updatePackStatus(Integer packId, PackStatus status) {
         Pack pack = packRepository.findById(packId)
@@ -184,7 +193,10 @@ public class PackServiceImpl implements PackService {
     @Caching(evict = {
         @CacheEvict(value = "packs",                        allEntries = true),
         @CacheEvict(value = "packs-by-status",              allEntries = true),
-        @CacheEvict(value = "packs-by-product-status",      allEntries = true)
+        @CacheEvict(value = "packs-by-product-status",      allEntries = true),
+        @CacheEvict(value = "products",                     allEntries = true),
+        @CacheEvict(value = "products-public",              allEntries = true),
+        @CacheEvict(value = "product-by-id",                allEntries = true)
     })
     public void deletePack(Integer id) {
         packRepository.deleteById(id);

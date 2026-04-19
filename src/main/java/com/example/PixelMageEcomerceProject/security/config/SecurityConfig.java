@@ -82,8 +82,8 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 // 2. Public GET endpoints cho Catalog & Marketplace & Card Gallery
                                                 .requestMatchers(org.springframework.http.HttpMethod.GET,
-                                                                "/api/products",
-                                                                "/api/products/**",
+                                                                "/api/products/public",    // danh sách sách phẩm công khai (isVisible+isActive)
+                                                                "/api/products/{id}",      // chi tiết sản phẩm đơn lẻ
                                                                 "/api/card-frameworks",
                                                                 "/api/card-templates",
                                                                 "/api/card-templates/by-framework/**",

@@ -23,14 +23,21 @@ public interface CardTemplateService {
     Optional<CardTemplate> getCardTemplateById(Integer id);
 
     List<CardTemplate> getAllCardTemplates();
+    List<CardTemplate> getAllVisibleCardTemplates();
 
     Page<CardTemplate> getAllCardTemplates(Pageable pageable);
+    Page<CardTemplate> getAllVisibleCardTemplates(Pageable pageable);
 
     Page<CardTemplate> getAllByRarity(CardTemplateRarity rarity, Pageable pageable);
+    Page<CardTemplate> getAllVisibleByRarity(CardTemplateRarity rarity, Pageable pageable);
 
     Page<CardTemplate> getAllByArcana(ArcanaType arcanaType, Pageable pageable);
+    Page<CardTemplate> getAllVisibleByArcana(ArcanaType arcanaType, Pageable pageable);
 
     Page<CardTemplate> getAllByFramework(Integer frameworkId, Pageable pageable);
+    Page<CardTemplate> getAllVisibleByFramework(Integer frameworkId, Pageable pageable);
 
     Optional<CardTemplate> getCardTemplateByName(String name);
+
+    CardTemplate toggleVisibility(Integer id);
 }

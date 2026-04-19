@@ -202,6 +202,15 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(value = "products-public")
+    public List<ProductResponse> getPublicProducts() {
+        // Chỉ trả về sản phẩm có isVisible=true và isActive=true cho khách hàng
+        return productRepository.findAllByIsVisibleTrueAndIsActiveTrue().stream()
+                .map(this::mapToEnrichedResponse)
+                .toList();
+    }
+
+    @Override
     public ProductResponse getProductByName(String name) {
         return productRepository.findByName(name)
                 .map(this::mapToEnrichedResponse)
@@ -210,8 +219,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Caching(evict = {
-        @CacheEvict(value = "products",      allEntries = true),
-        @CacheEvict(value = "product-by-id", key = "#id")
+        @CacheEvict(value = "products",        allEntries = true),
+        @CacheEvict(value = "products-public",  allEntries = true),
+        @CacheEvict(value = "product-by-id",   key = "#id")
     })
     public ProductResponse toggleVisibility(Integer id) {
         Product existingProduct = productRepository.findById(id)
@@ -222,8 +232,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Caching(evict = {
-        @CacheEvict(value = "products",      allEntries = true),
-        @CacheEvict(value = "product-by-id", key = "#id")
+        @CacheEvict(value = "products",        allEntries = true),
+        @CacheEvict(value = "products-public",  allEntries = true),
+        @CacheEvict(value = "product-by-id",   key = "#id")
     })
     public ProductResponse toggleActive(Integer id) {
         Product existingProduct = productRepository.findById(id)
