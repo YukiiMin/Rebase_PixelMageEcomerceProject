@@ -98,7 +98,9 @@ public class TarotReadingServiceImpl implements TarotReadingService {
                 .findFirstByAccount_CustomerIdAndStatusIn(
                         accountId, List.of(ReadingSessionStatus.PENDING, ReadingSessionStatus.INTERPRETING));
         if (active.isPresent()) {
-            throw new ActiveSessionExistsException(active.get().getSessionId());
+            // throw new ActiveSessionExistsException(active.get().getSessionId());
+            // AUTO CANCEL FOR DEVELOPMENT TESTING
+            cancelSession(active.get().getSessionId(), accountId);
         }
         // ───────────────────────────────────────────────────────────────────────
 
@@ -117,9 +119,9 @@ public class TarotReadingServiceImpl implements TarotReadingService {
                 boolean usedToday = usedAt != null && usedAt.toLocalDate().equals(now.toLocalDate());
 
                 if (usedToday) {
-                    throw new GuestReadingLimitException(
-                            "Bạn đã dùng lượt đọc thử hôm nay. " +
-                                    "Quay lại sau 00:00 hoặc mua Pack để đọc không giới hạn.");
+                    // throw new GuestReadingLimitException(
+                    //         "Bạn đã dùng lượt đọc thử hôm nay. " +
+                    //                 "Quay lại sau 00:00 hoặc mua Pack để đọc không giới hạn.");
                 }
 
                 account.setGuestReadingUsedAt(now);
