@@ -11,6 +11,7 @@ public interface ProductService {
     void deleteProduct(Integer id);
     ProductResponse getProductById(Integer id);
     List<ProductResponse> getAllProducts();
+    List<ProductResponse> getPublicProducts(); // chỉ trả isVisible=true & isActive=true
     ProductResponse getProductByName(String name);
     ProductResponse toggleVisibility(Integer id);
     ProductResponse toggleActive(Integer id);

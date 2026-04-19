@@ -110,6 +110,12 @@ public class CardTemplateServiceImpl implements CardTemplateService {
         return cardTemplateRepository.findAll();
     }
 
+    @Override
+    @Cacheable("card-templates-visible")
+    public List<CardTemplate> getAllVisibleCardTemplates() {
+        return cardTemplateRepository.findByIsVisibleTrue();
+    }
+
     /**
      * Pageable variant — NOT cached (page/sort params make cache keys ambiguous)
      */
@@ -119,8 +125,18 @@ public class CardTemplateServiceImpl implements CardTemplateService {
     }
 
     @Override
+    public Page<CardTemplate> getAllVisibleCardTemplates(Pageable pageable) {
+        return cardTemplateRepository.findByIsVisibleTrue(pageable);
+    }
+
+    @Override
     public Page<CardTemplate> getAllByRarity(CardTemplateRarity rarity, Pageable pageable) {
         return cardTemplateRepository.findByRarity(rarity, pageable);
+    }
+
+    @Override
+    public Page<CardTemplate> getAllVisibleByRarity(CardTemplateRarity rarity, Pageable pageable) {
+        return cardTemplateRepository.findByRarityAndIsVisibleTrue(rarity, pageable);
     }
 
     @Override
@@ -129,12 +145,37 @@ public class CardTemplateServiceImpl implements CardTemplateService {
     }
 
     @Override
+    public Page<CardTemplate> getAllVisibleByArcana(ArcanaType arcanaType, Pageable pageable) {
+        return cardTemplateRepository.findByArcanaTypeAndIsVisibleTrue(arcanaType, pageable);
+    }
+
+    @Override
     public Page<CardTemplate> getAllByFramework(Integer frameworkId, Pageable pageable) {
         return cardTemplateRepository.findByCardFramework_FrameworkId(frameworkId, pageable);
     }
 
     @Override
+    public Page<CardTemplate> getAllVisibleByFramework(Integer frameworkId, Pageable pageable) {
+        return cardTemplateRepository.findByCardFramework_FrameworkIdAndIsVisibleTrue(frameworkId, pageable);
+    }
+
+    @Override
     public Optional<CardTemplate> getCardTemplateByName(String name) {
         return cardTemplateRepository.findByName(name);
+    }
+
+    @Override
+    @Caching(evict = {
+            @CacheEvict(value = "card-templates",      allEntries = true),
+            @CacheEvict(value = "card-template-by-id", key = "#id")
+    })
+    public CardTemplate toggleVisibility(Integer id) {
+        // dùng findByIdIgnoreActive để bypass @SQLRestriction("is_active = true")
+        CardTemplate template = cardTemplateRepository.findByIdIgnoreActive(id)
+                .orElseThrow(() -> new RuntimeException("CardTemplate not found with id: " + id));
+        template.setIsVisible(
+                template.getIsVisible() == null || !template.getIsVisible()
+        );
+        return cardTemplateRepository.save(template);
     }
 }

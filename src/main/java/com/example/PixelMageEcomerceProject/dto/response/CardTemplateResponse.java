@@ -20,6 +20,7 @@ public class CardTemplateResponse {
     private Integer cardNumber;
     private String rarity;
     private String imagePath;
+    private Boolean isVisible;
     private Integer frameworkId;
     private String frameworkName;
     private DivineHelperResponse divineHelper;
@@ -38,6 +39,7 @@ public class CardTemplateResponse {
         private Integer cardNumber;
         private String rarity;
         private String imagePath;
+        private Boolean isVisible;
         private String frameworkName;
     }
 }

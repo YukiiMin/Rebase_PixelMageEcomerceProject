@@ -7,6 +7,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 
 import com.example.PixelMageEcomerceProject.dto.request.CardRequestDTO;
 import com.example.PixelMageEcomerceProject.entity.Card;
@@ -33,6 +35,11 @@ public class CardServiceImpl implements CardService {
     private final CardMapper cardMapper;
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products",                     allEntries = true),
+        @CacheEvict(value = "products-public",              allEntries = true),
+        @CacheEvict(value = "product-by-id",                allEntries = true)
+    })
     public Card createCardProduct(CardRequestDTO cardRequestDTO) {
         CardTemplate cardTemplate = cardTemplateRepository.findById(cardRequestDTO.getCardTemplateId())
                 .orElseThrow(() -> new RuntimeException(
@@ -53,6 +60,11 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products",                     allEntries = true),
+        @CacheEvict(value = "products-public",              allEntries = true),
+        @CacheEvict(value = "product-by-id",                allEntries = true)
+    })
     public Card bindNFC(Integer cardId, String nfcUid) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new RuntimeException("Card not found with id: " + cardId));
@@ -69,6 +81,11 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products",                     allEntries = true),
+        @CacheEvict(value = "products-public",              allEntries = true),
+        @CacheEvict(value = "product-by-id",                allEntries = true)
+    })
     public Card updateStatus(Integer cardId, String newStatus) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new RuntimeException("Card not found with id: " + cardId));
@@ -77,6 +94,11 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products",                     allEntries = true),
+        @CacheEvict(value = "products-public",              allEntries = true),
+        @CacheEvict(value = "product-by-id",                allEntries = true)
+    })
     public Card updateCard(Integer id, CardRequestDTO cardRequestDTO) {
         Optional<Card> existingCard = cardRepository.findById(id);
         if (existingCard.isPresent()) {
@@ -110,6 +132,11 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products",                     allEntries = true),
+        @CacheEvict(value = "products-public",              allEntries = true),
+        @CacheEvict(value = "product-by-id",                allEntries = true)
+    })
     public void deleteCard(Integer id) {
         Card card = cardRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Card not found with id: " + id));
