@@ -19,17 +19,21 @@ import com.example.PixelMageEcomerceProject.dto.request.OrderItemRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.request.OrderRequestDTO;
 import com.example.PixelMageEcomerceProject.dto.response.OrderResponse;
 import com.example.PixelMageEcomerceProject.entity.Account;
+import com.example.PixelMageEcomerceProject.entity.Card;
 import com.example.PixelMageEcomerceProject.entity.Order;
 import com.example.PixelMageEcomerceProject.entity.OrderItem;
 import com.example.PixelMageEcomerceProject.entity.Pack;
 import com.example.PixelMageEcomerceProject.entity.Product;
+import com.example.PixelMageEcomerceProject.enums.CardProductStatus;
 import com.example.PixelMageEcomerceProject.enums.OrderStatus;
 import com.example.PixelMageEcomerceProject.enums.PackStatus;
 import com.example.PixelMageEcomerceProject.enums.PaymentStatus;
+import com.example.PixelMageEcomerceProject.enums.ProductType;
 import com.example.PixelMageEcomerceProject.event.PaymentSuccessEvent;
 import com.example.PixelMageEcomerceProject.mapper.OrderItemMapper;
 import com.example.PixelMageEcomerceProject.mapper.OrderMapper;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
+import com.example.PixelMageEcomerceProject.repository.CardRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderItemRepository;
 import com.example.PixelMageEcomerceProject.repository.OrderRepository;
 import com.example.PixelMageEcomerceProject.repository.PackRepository;
@@ -52,6 +56,7 @@ public class OrderServiceImpl implements OrderService {
     private final AccountRepository accountRepository;
     private final PaymentService paymentService;
     private final PackRepository packRepository;
+    private final CardRepository cardRepository;
     private final ProductRepository productRepository;
     private final OrderItemRepository orderItemRepository;
     private final VoucherService voucherService;
@@ -283,26 +288,50 @@ public class OrderServiceImpl implements OrderService {
                     continue;
                 }
 
-                // Find first available (STOCKED) Pack for this product's PackCategory — FIFO
-                List<Pack> stockedPacks = new ArrayList<>();
-                if (item.getProduct().getPackCategory() != null) {
-                    stockedPacks = packRepository.findByPackCategoryPackCategoryIdAndStatus(
+                // ── GACHA_PACK: Find first available (STOCKED) Pack for this product's PackCategory ──
+                if (ProductType.GACHA_PACK.equals(item.getProduct().getProductType())
+                        && item.getProduct().getPackCategory() != null) {
+                    List<Pack> stockedPacks = packRepository.findByPackCategoryPackCategoryIdAndStatus(
                             item.getProduct().getPackCategory().getPackCategoryId(), PackStatus.STOCKED);
-                }
 
-                if (!stockedPacks.isEmpty()) {
-                    Pack pack = stockedPacks.get(0);
-                    pack.setStatus(PackStatus.SOLD);  // Skip RESERVED — go straight to SOLD
-                    packRepository.save(pack);
-                    item.setPack(pack);
-                    orderItemRepository.save(item);
-                    log.info("[EVENT] Pack {} (product={}) assigned to OrderItem {} and marked SOLD",
-                            pack.getPackId(), item.getProduct().getProductId(), item.getOrderItemId());
+                    if (!stockedPacks.isEmpty()) {
+                        Pack pack = stockedPacks.get(0);
+                        pack.setStatus(PackStatus.SOLD); // Skip RESERVED — go straight to SOLD
+                        packRepository.save(pack);
+                        item.setPack(pack);
+                        orderItemRepository.save(item);
+                        log.info("[EVENT] Pack {} (GACHA_PACK product={}) assigned to OrderItem {} and marked SOLD",
+                                pack.getPackId(), item.getProduct().getProductId(), item.getOrderItemId());
+                    } else {
+                        log.warn("[EVENT] No STOCKED packs for productId={}. OrderItem {} pending fulfillment.",
+                                item.getProduct().getProductId(), item.getOrderItemId());
+                    }
+
+                // ── SINGLE_CARD: Find first READY physical Card for this product — FIFO ──
+                } else if (ProductType.SINGLE_CARD.equals(item.getProduct().getProductType())) {
+                    List<Card> readyCards = cardRepository
+                            .findByProduct_ProductIdAndStatusOrderByCreatedAtAsc(
+                                    item.getProduct().getProductId(), CardProductStatus.READY);
+
+                    if (!readyCards.isEmpty()) {
+                        Card card = readyCards.get(0);
+                        card.setStatus(CardProductStatus.SOLD);
+                        card.setSoldAt(java.time.LocalDateTime.now());
+                        cardRepository.save(card);
+                        // Store card reference in OrderItem's customText as fallback
+                        // (OrderItem.pack is designed for Pack — SINGLE_CARD uses Card directly)
+                        item.setCustomText("card_id:" + card.getCardId());
+                        orderItemRepository.save(item);
+                        log.info("[EVENT] Card {} (SINGLE_CARD product={}) assigned to OrderItem {} and marked SOLD",
+                                card.getCardId(), item.getProduct().getProductId(), item.getOrderItemId());
+                    } else {
+                        log.warn("[EVENT] No READY cards for SINGLE_CARD productId={}. OrderItem {} pending fulfillment.",
+                                item.getProduct().getProductId(), item.getOrderItemId());
+                    }
+
                 } else {
-                    log.warn("[EVENT] No STOCKED packs available for productId={}. OrderItem {} pending fulfillment.",
-                            item.getProduct().getProductId(), item.getOrderItemId());
-                    // Order still completes — pack fulfillment can be done manually by staff
-                    // TODO: Trigger staff notification for manual pack assignment
+                    log.warn("[EVENT] OrderItem {} has unknown productType or missing category/template, skipping pack assignment.",
+                            item.getOrderItemId());
                 }
             }
         }

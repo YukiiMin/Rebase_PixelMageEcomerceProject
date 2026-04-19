@@ -40,4 +40,6 @@ public interface CardTemplateService {
     Optional<CardTemplate> getCardTemplateByName(String name);
 
     CardTemplate toggleVisibility(Integer id);
+
+    Page<CardTemplate> searchCardTemplates(String search, CardTemplateRarity rarity, Integer frameworkId, boolean includeInvisible, Pageable pageable);
 }

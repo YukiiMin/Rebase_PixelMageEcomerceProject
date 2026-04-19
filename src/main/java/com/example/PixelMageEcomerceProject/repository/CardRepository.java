@@ -23,4 +23,10 @@ public interface CardRepository extends JpaRepository<Card, Integer> {
     List<Card> findByCardTemplate_RarityAndStatus(CardTemplateRarity rarity, CardProductStatus status);
 
     long countByCardTemplate_CardTemplateIdAndStatus(Integer cardTemplateId, CardProductStatus status);
+
+    /**
+     * Find READY cards linked to a specific SINGLE_CARD product — used for FIFO
+     * assignment in handlePaymentSuccess. Ordered by createdAt so oldest stock ships first.
+     */
+    List<Card> findByProduct_ProductIdAndStatusOrderByCreatedAtAsc(Integer productId, CardProductStatus status);
 }

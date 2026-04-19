@@ -1,21 +1,21 @@
 package com.example.PixelMageEcomerceProject.service.impl;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Arrays;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
 import com.example.PixelMageEcomerceProject.entity.Account;
 import com.example.PixelMageEcomerceProject.entity.Card;
 import com.example.PixelMageEcomerceProject.enums.CardProductStatus;
+import com.example.PixelMageEcomerceProject.exceptions.CardLockedInSessionException;
 import com.example.PixelMageEcomerceProject.repository.AccountRepository;
 import com.example.PixelMageEcomerceProject.repository.CardRepository;
 import com.example.PixelMageEcomerceProject.repository.ReadingCardRepository;
-import com.example.PixelMageEcomerceProject.exceptions.CardLockedInSessionException;
-import com.example.PixelMageEcomerceProject.dto.event.NotificationEvent;
 import com.example.PixelMageEcomerceProject.service.interfaces.AchievementService;
 import com.example.PixelMageEcomerceProject.service.interfaces.NFCScanService;
 import com.example.PixelMageEcomerceProject.service.interfaces.UserInventoryService;
@@ -40,7 +40,8 @@ public class NFCScanServiceImpl implements NFCScanService {
         Card card = cardRepository.findByNfcUid(nfcUid)
                 .orElseThrow(() -> new RuntimeException("Card not found"));
 
-        if (card.getSoftwareUuid() == null || !card.getSoftwareUuid().equals(softwareUuid)) {
+        // Only validate softwareUuid for staff operations (when provided)
+        if (softwareUuid != null && (card.getSoftwareUuid() == null || !card.getSoftwareUuid().equals(softwareUuid))) {
             throw new RuntimeException("Card validation failed: Anti-cloning check rejected the card.");
         }
 
@@ -76,22 +77,21 @@ public class NFCScanServiceImpl implements NFCScanService {
         Card card = cardRepository.findLockedByNfcUid(nfcUid)
                 .orElseThrow(() -> new RuntimeException("Card not found"));
 
-        if (card.getSoftwareUuid() == null || !card.getSoftwareUuid().equals(softwareUuid)) {
+        // Only validate softwareUuid for staff operations (when provided)
+        if (softwareUuid != null && (card.getSoftwareUuid() == null || !card.getSoftwareUuid().equals(softwareUuid))) {
             throw new RuntimeException("Card validation failed: Anti-cloning check rejected the card.");
         }
 
         if (card.getCardTemplate() != null) {
             boolean isInActiveSession = readingCardRepository
-                .existsByCardTemplate_CardTemplateIdAndReadingSession_StatusIn(
-                    card.getCardTemplate().getCardTemplateId(),
-                    Arrays.asList("PENDING", "INTERPRETING")
-                );
+                    .existsByCardTemplate_CardTemplateIdAndReadingSession_StatusIn(
+                            card.getCardTemplate().getCardTemplateId(),
+                            Arrays.asList("PENDING", "INTERPRETING"));
 
             if (isInActiveSession) {
                 throw new CardLockedInSessionException(
-                    "Card đang được dùng trong phiên đọc bài chưa hoàn thành. " +
-                    "Phiên phải kết thúc trước khi thực hiện thao tác này."
-                );
+                        "Card đang được dùng trong phiên đọc bài chưa hoàn thành. " +
+                                "Phiên phải kết thúc trước khi thực hiện thao tác này.");
             }
         }
 
@@ -125,8 +125,7 @@ public class NFCScanServiceImpl implements NFCScanService {
         wsNotificationService.pushToUser(userId, NotificationEvent.nfcLinked(userId, Map.of(
                 "cardId", card.getCardId(),
                 "nfcUid", nfcUid,
-                "cardTemplateName", card.getCardTemplate() != null ? card.getCardTemplate().getName() : ""
-        )));
+                "cardTemplateName", card.getCardTemplate() != null ? card.getCardTemplate().getName() : "")));
 
         return response;
     }
@@ -138,16 +137,14 @@ public class NFCScanServiceImpl implements NFCScanService {
 
         if (card.getCardTemplate() != null) {
             boolean isInActiveSession = readingCardRepository
-                .existsByCardTemplate_CardTemplateIdAndReadingSession_StatusIn(
-                    card.getCardTemplate().getCardTemplateId(),
-                    Arrays.asList("PENDING", "INTERPRETING")
-                );
+                    .existsByCardTemplate_CardTemplateIdAndReadingSession_StatusIn(
+                            card.getCardTemplate().getCardTemplateId(),
+                            Arrays.asList("PENDING", "INTERPRETING"));
 
             if (isInActiveSession) {
                 throw new CardLockedInSessionException(
-                    "Card đang được dùng trong phiên đọc bài chưa hoàn thành. " +
-                    "Phiên phải kết thúc trước khi thực hiện thao tác này."
-                );
+                        "Card đang được dùng trong phiên đọc bài chưa hoàn thành. " +
+                                "Phiên phải kết thúc trước khi thực hiện thao tác này.");
             }
         }
 
@@ -180,8 +177,7 @@ public class NFCScanServiceImpl implements NFCScanService {
         // Push real-time event đến FE/MO
         wsNotificationService.pushToUser(userId, NotificationEvent.nfcUnlinked(userId, Map.of(
                 "cardId", card.getCardId(),
-                "nfcUid", nfcUid
-        )));
+                "nfcUid", nfcUid)));
 
         return response;
     }
